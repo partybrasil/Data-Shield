@@ -43,22 +43,30 @@ class PatternEngine:
         except Exception:
             return None
 
-    def detect_in_text(self, text: str, file_path: str) -> List[Finding]:
-        """Detect credentials using all layers."""
+    def detect_in_text(self, text: str, file_path: str, mode: str = "safe") -> List[Finding]:
+        """Detect credentials using all layers based on mode."""
         findings = []
         path_obj = Path(file_path)
         file_name = path_obj.name.lower()
 
-        # Layer 0: Filename detection (High value files)
+        # Layer 0: Filename detection (Always active)
         sensitive_filenames = {
             ".env": "Environment File",
             ".gitconfig": "Git Configuration",
-            "config": "Generic Configuration",
+            ".git-credentials": "Git Credentials",
+            "config.yml": "App Configuration",
+            "hosts.yml": "Auth Hosts (GH CLI)",
+            "github.xml": "GitHub Settings (Android Studio)",
+            "security.xml": "Security Settings",
             "credentials": "Cloud Credentials",
             "id_rsa": "SSH Private Key",
             "id_ed25519": "SSH Private Key",
             "master.key": "Master Key File",
-            "vault.db": "Vault Database"
+            "vault.db": "Vault Database",
+            "cookies": "Session Cookies (SQLite/LevelDB)",
+            "local storage": "Web Storage Data",
+            "globalstorage": "IDE Global Secrets",
+            "session.json": "Session Tokens"
         }
         
         for s_name, s_type in sensitive_filenames.items():
@@ -78,7 +86,7 @@ class PatternEngine:
                     discovered_at=datetime.now(timezone.utc),
                 ))
 
-        # Layer 1: Regex patterns
+        # Layer 1: Regex patterns (Always active)
         for pattern_name, pattern in self.regex_patterns.items():
             for match in pattern.finditer(text):
                 findings.append(Finding(
@@ -96,7 +104,11 @@ class PatternEngine:
                     discovered_at=datetime.now(timezone.utc),
                 ))
 
-        # Layer 2: YARA rules
+        # Skip intensive layers for ultra_fast
+        if mode == "ultra_fast":
+            return findings
+
+        # Layer 2: YARA rules (Active in fast, safe, deep)
         if self.yara_rules:
             try:
                 matches = self.yara_rules.match(data=text)
@@ -118,11 +130,16 @@ class PatternEngine:
             except Exception:
                 pass
 
-        # Layer 3: Entropy analysis
+        # Skip entropy for fast
+        if mode == "fast":
+            return findings
+
+        # Layer 3: Entropy analysis (Active in safe, deep)
+        threshold = 3.2 if mode == "deep" else self.entropy_threshold
         for line in text.split("\n"):
             if len(line) > 10:
                 entropy = _shannon_entropy(line.encode())
-                if entropy > self.entropy_threshold:
+                if entropy > threshold:
                     findings.append(Finding(
                         id=str(uuid4()),
                         session_id="",
@@ -132,7 +149,7 @@ class PatternEngine:
                         pattern_id="entropy",
                         sensitive_value=line[:50],
                         context_snippet=line[:200],
-                        risk_score=int(60),
+                        risk_score=int(60 if mode != "deep" else 75),
                         confidence=Confidence.MEDIUM,
                         detection_layer=DetectionLayer.ENTROPY,
                         discovered_at=datetime.now(timezone.utc),

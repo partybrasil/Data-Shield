@@ -28,11 +28,20 @@ Utiliza la barra lateral para moverte entre los diferentes módulos:
 - 👤 **Monitor**: Seguimiento en tiempo real de cambios en el sistema.
 - ⚙️ **Settings**: Configuración de hilos, exclusiones y preferencias.
 
-### 3. Persistencia Inteligente
-La aplicación recuerda automáticamente:
-- El tamaño y posición de la ventana.
-- Tus carpetas excluidas de escaneo.
-- El número de hilos de procesamiento preferido.
+## ✨ Características Principales
+- **Escaneo Inteligente**:
+    - **Visualización en tiempo real**: Los secretos aparecen en la lista conforme se encuentran.
+    - **Filtro dinámico**: Un selector discreto permite ver solo tipos específicos (ej. solo "SSH Keys") sin detener el escaneo.
+    - **Control total**: Botón de parada inmediata que conserva los resultados parciales.
+- **Nuevos Modos de Escaneo**:
+    - **ULTRA_FAST**: Instantáneo, solo nombres de archivos.
+    - **FAST**: Rápido, Regex y YARA en cabeceras.
+    - **SAFE**: Estándar, análisis profundo de 1MB por archivo (Recomendado).
+    - **DEEP**: Paranoico, analiza el archivo completo y busca alta entropía.
+    - **INTERACTIVE**: Te pregunta qué hacer con cada hallazgo al momento.
+- **Personalización y Persistencia**:
+    - La aplicación recuerda el tamaño de tu ventana, posición y hilos de escaneo.
+    - Monitor de recursos (CPU/RAM/GPU) en la barra de título para vigilar el impacto en el sistema.
 
 ## 📸 Capturas de Pantalla
 

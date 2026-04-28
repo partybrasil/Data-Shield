@@ -18,7 +18,8 @@ from qfluentwidgets import (
     NavigationItemPosition, FluentWindow, SubtitleLabel, 
     setTheme, Theme, FluentIcon as FIF,
     InfoBar, InfoBarIcon, InfoBarPosition,
-    PrimaryPushButton, PushButton, TransparentToolButton
+    PrimaryPushButton, PushButton, TransparentToolButton,
+    StrongBodyLabel, BodyLabel, ComboBox
 )
 
 from .widgets import ScanPanel, ResultsTable, ProgressWidget, VaultPanel, MonitorPanel, SettingsPanel
@@ -117,7 +118,26 @@ class MainWindow(FluentWindow):
         self.scan_header = SubtitleLabel("System Security Scan", self.scanner_interface)
         self.scan_panel = ScanPanel()
         self.progress_widget = ProgressWidget()
-        self.results_table = ResultsTable()
+        self.results_table = ResultsTable() # Initialize FIRST
+        
+        # Results Section with Discrete Filter
+        results_header_layout = QHBoxLayout()
+        results_header_layout.setContentsMargins(0, 10, 0, 0)
+        
+        self.results_label = StrongBodyLabel("Scan Findings")
+        
+        self.type_filter_combo = ComboBox()
+        self.type_filter_combo.setPlaceholderText("Filter by type...")
+        self.type_filter_combo.addItem("All Types")
+        self.type_filter_combo.setFixedWidth(200)
+        self.type_filter_combo.currentTextChanged.connect(self.results_table.set_filter)
+        
+        results_header_layout.addWidget(self.results_label)
+        results_header_layout.addStretch()
+        results_header_layout.addWidget(BodyLabel("Filter:"))
+        results_header_layout.addWidget(self.type_filter_combo)
+        
+        self.scanner_interface.setObjectName("scanner_interface")
         
         self.scan_panel.scan_requested.connect(self.start_scan)
         self.scan_panel.stop_requested.connect(self.stop_scan)
@@ -125,8 +145,10 @@ class MainWindow(FluentWindow):
         scan_layout.addWidget(self.scan_header)
         scan_layout.addWidget(self.scan_panel)
         scan_layout.addWidget(self.progress_widget)
+        scan_layout.addLayout(results_header_layout)
         scan_layout.addWidget(self.results_table)
-        self.scanner_interface.setObjectName("scanner_interface")
+        
+        self.found_types = set()
 
         # Vault Panel
         self.vault_interface = VaultPanel()
@@ -214,6 +236,12 @@ class MainWindow(FluentWindow):
         self.results_table.clear_results()
         self.progress_widget.update_progress(0, 1)
         
+        # Reset filter
+        self.found_types = set()
+        self.type_filter_combo.clear()
+        self.type_filter_combo.addItem("All Types")
+        self.type_filter_combo.setCurrentText("All Types")
+        
         InfoBar.info(
             title="Scan Started",
             content=f"Scanning directory: {path}",
@@ -226,9 +254,23 @@ class MainWindow(FluentWindow):
         
         self.scan_worker = ScanWorker(self.scanner, path, mode)
         self.scan_worker.progress.connect(self.progress_widget.update_progress)
+        self.scan_worker.finding_discovered.connect(self.on_finding_discovered)
         self.scan_worker.finished.connect(self.on_scan_finished)
         self.scan_worker.error.connect(self.on_scan_error)
         self.scan_worker.start()
+
+    def on_finding_discovered(self, finding):
+        """Handle real-time finding and update dynamic filter."""
+        # Update table
+        self.results_table.add_finding(finding)
+        
+        # Update dynamic filter list
+        is_dict = isinstance(finding, dict)
+        f_type = finding["pattern_name"] if is_dict else finding.pattern_name
+        
+        if f_type not in self.found_types:
+            self.found_types.add(f_type)
+            self.type_filter_combo.addItem(f_type)
 
     def stop_scan(self):
         if self.scanner:
@@ -241,19 +283,9 @@ class MainWindow(FluentWindow):
         self.scan_panel.scan_btn.setEnabled(True)
         self.scan_panel.stop_btn.setEnabled(False)
         
-        from ..core.findings import FindingService
-        session = self.scanner.session_factory()
-        try:
-            service = FindingService(session)
-            findings = service.get_session_findings(session_id)
-            for finding in findings:
-                self.results_table.add_finding(finding)
-        finally:
-            session.close()
-
         InfoBar.success(
             title="Scan Complete",
-            content=f"Detected {len(findings)} potential threats.",
+            content=f"Scan finished successfully.",
             parent=self
         )
 
@@ -284,7 +316,11 @@ class MainWindow(FluentWindow):
         self.theme_manager = theme_manager
 
     def closeEvent(self, event):
-        """Ensure vault is locked on close."""
+        """Ensure vault is locked and threads are stopped on close."""
+        if hasattr(self, "scan_worker") and self.scan_worker.isRunning():
+            self.scanner.stop()
+            self.scan_worker.wait(2000) # Wait up to 2 seconds
+            
         if self.vault:
             self.vault.lock()
         self.tray_icon.hide()

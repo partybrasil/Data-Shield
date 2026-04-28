@@ -9,17 +9,11 @@ class ScanWorker(QThread):
     """Worker thread for scanning operations."""
 
     progress = Signal(int, int)  # current, total
+    finding_discovered = Signal(object)  # finding object
     finished = Signal(str)  # session_id
     error = Signal(str)  # error message
 
     def __init__(self, scanner, path: str, mode: str = "safe"):
-        """Initialize scan worker.
-
-        Args:
-            scanner: Scanner instance
-            path: Path to scan
-            mode: Scan mode (fast, safe, interactive)
-        """
         super().__init__()
         self.scanner = scanner
         self.path = path
@@ -28,10 +22,13 @@ class ScanWorker(QThread):
     def run(self):
         """Run scan in worker thread."""
         try:
-            def progress_callback(current, total):
-                self.progress.emit(current, total)
+            def scan_callback(current, total, finding=None):
+                if finding:
+                    self.finding_discovered.emit(finding)
+                if current >= 0:
+                    self.progress.emit(current, total)
 
-            session_id = self.scanner.scan(self.path, callback=progress_callback)
+            session_id = self.scanner.scan(self.path, callback=scan_callback)
             self.finished.emit(session_id)
         except Exception as e:
             self.error.emit(str(e))

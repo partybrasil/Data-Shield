@@ -26,7 +26,7 @@ def cli():
 @click.argument("path", type=click.Path(exists=True), default=".")
 @click.option(
     "--mode",
-    type=click.Choice(["fast", "safe", "interactive"]),
+    type=click.Choice(["ultra_fast", "fast", "safe", "deep", "interactive"]),
     default="safe",
     help="Scan mode",
 )
@@ -35,10 +35,12 @@ def cli():
 def scan(path: str, mode: str, max_size: int, threads: int):
     """Scan for sensitive credentials.
 
-    Supports 3 modes:
-    - fast: Quick scan, minimal checks
-    - safe: Balanced speed and accuracy (default)
-    - interactive: Pause on findings for user review
+    Modes:
+    - ultra_fast: Filenames only, extremely fast
+    - fast: Regex + YARA (limited content)
+    - safe: All layers (1MB content, default)
+    - deep: Exhaustive analysis (Full file)
+    - interactive: Pause on findings for review
     """
     config = load_config()
     config.scan.mode = mode

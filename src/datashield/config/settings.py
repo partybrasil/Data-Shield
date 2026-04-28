@@ -29,8 +29,9 @@ class ScanConfig(BaseModel):
     @classmethod
     def validate_mode(cls, v: str) -> str:
         """Validate scan mode."""
-        if v not in ("fast", "safe", "interactive"):
-            raise ValueError("mode must be 'fast', 'safe', or 'interactive'")
+        valid_modes = ("ultra_fast", "fast", "safe", "deep", "interactive")
+        if v not in valid_modes:
+            raise ValueError(f"mode must be one of {valid_modes}")
         return v
 
 

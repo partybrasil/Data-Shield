@@ -11,14 +11,23 @@
 Después de un día de trabajo usando múltiples herramientas (VS Code, Git, GitHub CLI, Docker, AWS CLI, npm, Kubernetes, etc.), tus archivos de configuración y credenciales están dispersos en decenas de directorios distintos.
 
 **Data-Shield soluciona esto**:
-- ✅ Escanea **profundidad ilimitada** incluyendo carpetas y archivos ocultos
-- ✅ Detecta información sensible con **6 capas de análisis** (regex + YARA + entropía + parsers JSON/YAML/SQLite + fingerprinting)
-- ✅ Identifica **qué aplicación** maneja cada credencial (40+ apps conocidas)
-- ✅ Puntúa riesgo **0-100** con matriz CRITICAL/HIGH/MEDIUM/LOW
-- ✅ Cifra automáticamente con **AES-256-GCM + PBKDF2** en tu "Vault"
-- ✅ Integración con **Windows Task Scheduler** para cifrado automático al apagar / descifrado al iniciar
-- ✅ Monitor en **tiempo real** para nuevas credenciales
-- ✅ Interfaz dual: **CLI poderosa** (Rich + Colorama) + **GUI moderna** (PySide6 Fluent Design / Windows 11 Mica)
+- ✅ **6 Capas de Análisis**: Regex, YARA, Entropía de Shannon, Parsers (JSON/YAML/SQLite), Filename matching y App Fingerprinting.
+- ✅ **Escaneo Inteligente**:
+    - **Visualización en tiempo real**: Los secretos aparecen en la lista conforme se encuentran.
+    - **Filtro dinámico**: Un selector discreto permite ver solo tipos específicos (ej. solo "SSH Keys") sin detener el escaneo.
+    - **Control total**: Botón de parada inmediata que conserva los resultados parciales.
+- **Personalización y Persistencia**:
+    - La aplicación recuerda el tamaño de tu ventana, posición y ajustes de escaneo entre reinicios.
+    - Exclusiones de carpetas configurables (ej. `node_modules`, `.venv`).
+- ✅ **Nuevos Modos de Escaneo**:
+  - `ULTRA_FAST`: Instantáneo, solo nombres de archivos (Perfecto para triage rápido).
+  - `FAST`: Regex + YARA en cabeceras (100KB).
+  - `SAFE`: Análisis balanceado (1MB, default).
+  - `DEEP`: Análisis byte-a-byte de archivos completos + Entropía profunda.
+  - `INTERACTIVE`: Pausa para decisión del usuario en cada hallazgo.
+- ✅ **Filtrado Dinámico en Tiempo Real**: Filtra hallazgos por tipo (SSH, AWS, AI Tokens) mientras el escaneo sigue en curso.
+- ✅ **Conocimiento Extendido (AI & Dev Tools)**: Soporte nativo para Antigravity, Gemini, Claude AI, Android Studio, GitHub Desktop y Comet Browser.
+- ✅ **Interfaz Windows 11 Fluent**: Efectos Mica, modo oscuro, monitor de recursos (CPU/RAM/GPU) en tiempo real y persistencia de estado.
 - ✅ Exportación limpia: TXT, JSON, CSV, HTML interactivo
 
 ---
@@ -432,9 +441,11 @@ Noche:
 ### Escaneo
 - ✅ Profundidad configurable (0 = ilimitado)
 - ✅ **3 Modos de Operación**:
-  - **PERFORMANCE**: Máximo CPU/RAM/GPU, ~2-3 min para 100k archivos
-  - **SAFE**: Bajo impacto de recursos, ~8-10 min para 100k archivos (default)
-  - **INTERACTIVE**: Pausa en cada hallazgo, espera decisión del usuario
+  - **ULTRA_FAST**: Solo nombres de archivos, velocidad instantánea.
+  - **FAST**: Regex + YARA (primeros 100KB), muy rápido.
+  - **SAFE**: Todas las capas (1MB de contenido), equilibrado (default).
+  - **DEEP**: Análisis exhaustivo (archivo completo) + YARA + Entropía profunda.
+  - **INTERACTIVE**: Pausa en cada hallazgo, espera decisión del usuario.
 - ✅ Modo turbo (solo archivos de riesgo) vs. Modo profundo (análisis byte a byte)
 - ✅ Incluir/excluir directorios
 - ✅ Pausa y resume (con checkpoint automático cada 500 archivos)

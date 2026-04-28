@@ -43,8 +43,9 @@ class ScanPanel(QWidget):
         # Mode selection
         mode_layout = QHBoxLayout()
         self.mode_combo = ComboBox()
-        self.mode_combo.addItems(["safe", "fast", "interactive"])
-        self.mode_combo.setCurrentIndex(1) # fast by default
+        self.mode_combo.addItems(["ultra_fast", "fast", "safe", "deep", "interactive"])
+        self.mode_combo.setCurrentText("safe")
+        self.mode_combo.setToolTip("ultra_fast: Filenames only\nfast: Regex + YARA\nsafe: All layers (1MB limit)\ndeep: All layers (Full file)")
         
         mode_layout.addWidget(BodyLabel("Scan Mode:"))
         mode_layout.addWidget(self.mode_combo, 1)
@@ -174,10 +175,12 @@ class SettingsPanel(QWidget):
 
 
 class ResultsTable(TableWidget):
-    """Table widget for displaying scan results."""
+    """Table widget for displaying scan results with dynamic filtering."""
 
     def __init__(self):
         super().__init__()
+        self.all_findings = []
+        self._current_filter = "All Types"
         self.init_ui()
 
     def init_ui(self):
@@ -190,26 +193,66 @@ class ResultsTable(TableWidget):
         self.setBorderRadius(10)
 
     def add_finding(self, finding):
+        # Store for filtering
+        self.all_findings.append(finding)
+        
+        # Only add to UI if it matches current filter
+        is_dict = isinstance(finding, dict)
+        f_type = finding["pattern_name"] if is_dict else finding.pattern_name
+        
+        if self._current_filter == "All Types" or f_type == self._current_filter:
+            self._display_finding(finding)
+
+    def _display_finding(self, finding):
         row = self.rowCount()
         self.insertRow(row)
 
-        self.setItem(row, 0, QTableWidgetItem(finding.file_path))
-        self.setItem(row, 1, QTableWidgetItem(finding.pattern_name))
+        is_dict = isinstance(finding, dict)
+        file_path = finding["file_path"] if is_dict else finding.file_path
+        pattern_name = finding["pattern_name"] if is_dict else finding.pattern_name
+        risk_score = finding["risk_score"] if is_dict else finding.risk_score
+        confidence = finding["confidence"] if is_dict else finding.confidence
         
-        risk_item = QTableWidgetItem(f"{int(finding.risk_score)}%")
-        if finding.risk_score >= 85:
+        found_at = finding["found_at"] if is_dict else finding.found_at
+        if isinstance(found_at, str):
+            from datetime import datetime
+            try:
+                found_at = datetime.fromisoformat(found_at)
+            except:
+                found_at = datetime.now()
+
+        self.setItem(row, 0, QTableWidgetItem(file_path))
+        self.setItem(row, 1, QTableWidgetItem(pattern_name))
+        
+        risk_pct = int(risk_score * 100) if risk_score <= 1.0 else int(risk_score)
+        risk_item = QTableWidgetItem(f"{risk_pct}%")
+        if risk_pct >= 85:
             risk_item.setForeground(QColor("#ff4d4d"))
-        elif finding.risk_score >= 50:
+        elif risk_pct >= 50:
             risk_item.setForeground(QColor("#ffaa00"))
         else:
             risk_item.setForeground(QColor("#00ffaa"))
         self.setItem(row, 2, risk_item)
 
-        confidence_str = f"{int(finding.confidence * 100)}%"
+        confidence_str = f"{int(confidence * 100)}%"
         self.setItem(row, 3, QTableWidgetItem(confidence_str))
-        self.setItem(row, 4, QTableWidgetItem(finding.found_at.strftime("%H:%M:%S")))
+        self.setItem(row, 4, QTableWidgetItem(found_at.strftime("%H:%M:%S")))
+        
+        self.scrollToBottom()
+        self.viewport().update()
+
+    def set_filter(self, filter_type: str):
+        """Apply a filter by type and rebuild the table view."""
+        self._current_filter = filter_type
+        self.setRowCount(0)
+        for finding in self.all_findings:
+            is_dict = isinstance(finding, dict)
+            f_type = finding["pattern_name"] if is_dict else finding.pattern_name
+            if filter_type == "All Types" or f_type == filter_type:
+                self._display_finding(finding)
 
     def clear_results(self):
+        self.all_findings = []
         self.setRowCount(0)
 
 
@@ -239,13 +282,26 @@ class ProgressWidget(QWidget):
 
     def update_progress(self, current: int, total: int):
         if total > 0:
+            if current == 0 and total > 1:
+                # Signal for discovery phase
+                self.progress_bar.setRange(0, 0) # Indeterminate mode
+                self.progress_label.setText("Analyzing file system...")
+                self.status_label.setText(f"Files found: {total}...")
+                return
+            
+            self.progress_bar.setRange(0, 100)
             percent = int((current / total) * 100)
             self.progress_bar.setValue(percent)
             self.status_label.setText(f"Files scanned: {current}/{total}")
+            
             if percent < 100:
                 self.progress_label.setText(f"Scanning... {percent}%")
             else:
                 self.progress_label.setText("Scan Complete")
+        else:
+            self.progress_bar.setRange(0, 100)
+            self.progress_bar.setValue(0)
+            self.status_label.setText("Files scanned: 0/0")
 
 
 class VaultPanel(QWidget):

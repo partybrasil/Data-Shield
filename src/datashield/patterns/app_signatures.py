@@ -50,6 +50,20 @@ _SIGS: list[dict] = [
         ],
     },
     {
+        "id": "android_studio",
+        "display_name": "Android Studio",
+        "category": "ide",
+        "paths": [
+            r"%APPDATA%\Google\AndroidStudio*",
+            r"%LOCALAPPDATA%\Google\AndroidStudio*",
+        ],
+        "process_names": ["studio64.exe"],
+        "credential_locations": [
+            {"path": r"%APPDATA%\Google\AndroidStudio*\options\github.xml",
+             "secret_type": "github_token", "how_stored": "plaintext"},
+        ],
+    },
+    {
         "id": "jetbrains_idea",
         "display_name": "JetBrains IntelliJ IDEA",
         "category": "ide",
@@ -108,15 +122,25 @@ _SIGS: list[dict] = [
         "display_name": "GitHub CLI",
         "category": "vcs",
         "paths": [
-            r"%APPDATA%\GitHub CLI",
+            r"%APPDATA%\gh",
             r"%LOCALAPPDATA%\gh",
         ],
         "process_names": ["gh.exe"],
         "credential_locations": [
-            {"path": r"%APPDATA%\GitHub CLI\hosts.yml",
+            {"path": r"%APPDATA%\gh\hosts.yml",
              "secret_type": "github_oauth_token", "how_stored": "plaintext"},
         ],
         "reference_urls": ["https://cli.github.com/manual/gh_auth"],
+    },
+    {
+        "id": "github_desktop",
+        "display_name": "GitHub Desktop",
+        "category": "vcs",
+        "paths": [
+            r"%APPDATA%\GitHub Desktop",
+            r"%LOCALAPPDATA%\GitHubDesktop",
+        ],
+        "process_names": ["GitHubDesktop.exe"],
     },
     {
         "id": "gitlab_cli",
@@ -283,6 +307,17 @@ _SIGS: list[dict] = [
         "paths": [r"%LOCALAPPDATA%\Vivaldi\User Data"],
         "process_names": ["vivaldi.exe"],
     },
+    {
+        "id": "comet_browser",
+        "display_name": "Comet Browser (Perplexity)",
+        "category": "browser",
+        "paths": [r"%LOCALAPPDATA%\Comet\User Data"],
+        "process_names": ["comet.exe"],
+        "credential_locations": [
+            {"path": r"%LOCALAPPDATA%\Comet\User Data\Default\Cookies",
+             "secret_type": "session_cookies", "how_stored": "sqlite+dpapi"},
+        ],
+    },
     # ── Package Managers ─────────────────────────────────────────────────
     {
         "id": "npm",
@@ -368,12 +403,36 @@ _SIGS: list[dict] = [
             r"%APPDATA%\Antigravity",
             r"%LOCALAPPDATA%\Antigravity",
             r"%USERPROFILE%\.gemini",
+            r"%APPDATA%\.gemini",
         ],
         "process_names": ["antigravity.exe"],
         "credential_locations": [
             {"path": r"%APPDATA%\Antigravity", "file_patterns": ["*.json", "*.db"],
              "secret_type": "ai_session_tokens", "how_stored": "encrypted"},
+            {"path": r"%USERPROFILE%\.gemini\antigravity\brain", "file_patterns": ["*.md", "*.json"],
+             "secret_type": "session_context", "how_stored": "plaintext"},
         ],
+    },
+    {
+        "id": "gemini_ai",
+        "display_name": "Gemini CLI / Desktop",
+        "category": "ai_tool",
+        "paths": [
+            r"%APPDATA%\Gemini",
+            r"%LOCALAPPDATA%\Google\Gemini",
+            r"%USERPROFILE%\.gemini",
+        ],
+        "process_names": ["gemini.exe", "Gemini.exe"],
+    },
+    {
+        "id": "claude_ai",
+        "display_name": "Claude AI CLI / Desktop",
+        "category": "ai_tool",
+        "paths": [
+            r"%APPDATA%\Claude",
+            r"%USERPROFILE%\.claude",
+        ],
+        "process_names": ["claude.exe", "Claude.exe"],
     },
     {
         "id": "ollama",
