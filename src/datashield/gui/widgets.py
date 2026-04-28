@@ -13,6 +13,7 @@ class ScanPanel(QWidget):
     """Panel for configuring and starting scans."""
 
     scan_requested = Signal(str, str)  # path, mode
+    stop_requested = Signal()
 
     def __init__(self):
         """Initialize scan panel."""
@@ -41,11 +42,19 @@ class ScanPanel(QWidget):
         mode_layout.addWidget(self.mode_combo)
         layout.addLayout(mode_layout)
 
-        # Scan button
+        # Buttons
+        btn_layout = QHBoxLayout()
         self.scan_btn = QPushButton("Start Scan")
         self.scan_btn.clicked.connect(self.on_scan_clicked)
-        layout.addWidget(self.scan_btn)
+        btn_layout.addWidget(self.scan_btn)
 
+        self.stop_btn = QPushButton("Stop Scan")
+        self.stop_btn.setObjectName("secondary")
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.clicked.connect(self.stop_requested.emit)
+        btn_layout.addWidget(self.stop_btn)
+        
+        layout.addLayout(btn_layout)
         self.setLayout(layout)
 
     def browse_directory(self):
@@ -62,6 +71,103 @@ class ScanPanel(QWidget):
             return
         mode = self.mode_combo.currentText()
         self.scan_requested.emit(path, mode)
+
+
+class MonitorPanel(QWidget):
+    """Panel for real-time monitoring."""
+
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(30, 30, 30, 30)
+
+        title = QLabel("Real-Time Monitor")
+        title.setStyleSheet("font-size: 20px; color: #00f2ff; font-weight: bold;")
+        layout.addWidget(title)
+
+        self.status_label = QLabel("STATUS: INACTIVE")
+        self.status_label.setStyleSheet("color: #ff3e3e; font-weight: bold;")
+        layout.addWidget(self.status_label)
+
+        self.start_btn = QPushButton("Enable Monitoring")
+        self.start_btn.clicked.connect(self.toggle_monitor)
+        layout.addWidget(self.start_btn)
+
+        layout.addWidget(QLabel("Recent Activity:"))
+        self.activity_log = QTableWidget(0, 3)
+        self.activity_log.setHorizontalHeaderLabels(["Time", "File", "Event"])
+        self.activity_log.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.activity_log)
+
+        self.setLayout(layout)
+
+    def toggle_monitor(self):
+        if self.start_btn.text() == "Enable Monitoring":
+            self.start_btn.setText("Disable Monitoring")
+            self.status_label.setText("STATUS: ACTIVE")
+            self.status_label.setStyleSheet("color: #00ffaa; font-weight: bold;")
+        else:
+            self.start_btn.setText("Enable Monitoring")
+            self.status_label.setText("STATUS: INACTIVE")
+            self.status_label.setStyleSheet("color: #ff3e3e; font-weight: bold;")
+
+
+class SettingsPanel(QWidget):
+    """Panel for application settings."""
+    
+    settings_saved = Signal(list, int) # exclusions, threads
+    password_change_requested = Signal(str, str) # old_pass, new_pass
+
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(30, 30, 30, 30)
+
+        layout.addWidget(QLabel("Scanning Exclusions (comma separated):"))
+        self.exclude_input = QLineEdit()
+        self.exclude_input.setText("node_modules, venv, .git, .venv")
+        layout.addWidget(self.exclude_input)
+
+        layout.addWidget(QLabel("Max Threads:"))
+        self.threads_spin = QSpinBox()
+        self.threads_spin.setRange(1, 32)
+        self.threads_spin.setValue(4)
+        layout.addWidget(self.threads_spin)
+
+        layout.addWidget(QLabel("\n--- Vault Security ---"))
+        layout.addWidget(QLabel("Current Master Password:"))
+        self.old_pass = QLineEdit()
+        self.old_pass.setEchoMode(QLineEdit.Password)
+        layout.addWidget(self.old_pass)
+
+        layout.addWidget(QLabel("New Master Password:"))
+        self.new_pass = QLineEdit()
+        self.new_pass.setEchoMode(QLineEdit.Password)
+        layout.addWidget(self.new_pass)
+
+        self.save_btn = QPushButton("Save Settings")
+        self.save_btn.clicked.connect(self.on_save_clicked)
+        layout.addWidget(self.save_btn)
+
+        layout.addStretch()
+        self.setLayout(layout)
+
+    def on_save_clicked(self):
+        """Handle save button click."""
+        excludes = [s.strip() for s in self.exclude_input.text().split(",") if s.strip()]
+        threads = self.threads_spin.value()
+        self.settings_saved.emit(excludes, threads)
+        
+        if self.old_pass.text() and self.new_pass.text():
+            self.password_change_requested.emit(self.old_pass.text(), self.new_pass.text())
+        
+        QMessageBox.information(self, "Settings", "Settings saved successfully!")
 
 
 class ResultsTable(QTableWidget):
@@ -89,21 +195,21 @@ class ResultsTable(QTableWidget):
         self.insertRow(row)
 
         self.setItem(row, 0, QTableWidgetItem(finding.file_path))
-        self.setItem(row, 1, QTableWidgetItem(finding.data_type))
+        self.setItem(row, 1, QTableWidgetItem(finding.pattern_name))
         
-        # Risk score with color (handled by QSS selection or manual if needed)
-        risk_item = QTableWidgetItem(str(finding.risk_score))
-        if finding.risk_score >= 70:
+        # Risk score with color
+        risk_item = QTableWidgetItem(f"{int(finding.risk_score)}%")
+        if finding.risk_score >= 80:
             risk_item.setForeground(Qt.red)
-        elif finding.risk_score >= 40:
+        elif finding.risk_score >= 50:
             risk_item.setForeground(Qt.yellow)
         else:
             risk_item.setForeground(Qt.green)
         self.setItem(row, 2, risk_item)
 
-        confidence_str = finding.confidence.value if hasattr(finding.confidence, "value") else str(finding.confidence)
+        confidence_str = f"{int(finding.confidence * 100)}%"
         self.setItem(row, 3, QTableWidgetItem(confidence_str))
-        self.setItem(row, 4, QTableWidgetItem(finding.discovered_at.strftime("%H:%M:%S")))
+        self.setItem(row, 4, QTableWidgetItem(finding.found_at.strftime("%H:%M:%S")))
 
     def clear_results(self):
         """Clear all results."""
@@ -147,6 +253,9 @@ class ProgressWidget(QWidget):
 
 class VaultPanel(QWidget):
     """Panel for vault operations."""
+
+    unlock_requested = Signal(str)  # password
+    lock_requested = Signal()
 
     def __init__(self):
         """Initialize vault panel."""
@@ -202,17 +311,28 @@ class VaultPanel(QWidget):
 
     def on_unlock_clicked(self):
         """Handle unlock button."""
-        self.status_label.setText("VAULT UNLOCKED")
-        self.status_label.setStyleSheet("color: #00ffaa; font-weight: bold;")
-        self.icon_label.setText("🔓")
-        self.unlock_btn.hide()
-        self.lock_btn.show()
+        password = self.password_input.text()
+        if not password:
+            QMessageBox.warning(self, "Error", "Please enter a password")
+            return
+        self.unlock_requested.emit(password)
 
     def on_lock_clicked(self):
         """Handle lock button."""
-        self.status_label.setText("VAULT LOCKED")
-        self.status_label.setStyleSheet("color: #ff3e3e; font-weight: bold;")
-        self.icon_label.setText("🔒")
-        self.password_input.clear()
-        self.lock_btn.hide()
-        self.unlock_btn.show()
+        self.lock_requested.emit()
+
+    def set_unlocked(self, unlocked: bool):
+        """Update UI state based on vault status."""
+        if unlocked:
+            self.status_label.setText("VAULT UNLOCKED")
+            self.status_label.setStyleSheet("color: #00ffaa; font-weight: bold;")
+            self.icon_label.setText("🔓")
+            self.unlock_btn.hide()
+            self.lock_btn.show()
+        else:
+            self.status_label.setText("VAULT LOCKED")
+            self.status_label.setStyleSheet("color: #ff3e3e; font-weight: bold;")
+            self.icon_label.setText("🔒")
+            self.password_input.clear()
+            self.lock_btn.hide()
+            self.unlock_btn.show()

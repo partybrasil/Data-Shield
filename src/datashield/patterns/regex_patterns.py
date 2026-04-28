@@ -487,6 +487,23 @@ _RAW: list[tuple[str, str, str, int, str | None, str | None]] = [
     ("planetscale_password",
      r"pscale_pw_[A-Za-z0-9\-_]{43}",
      "PlanetScale Password", 85, None, None),
+
+    # ── Git Low-Level / Info ─────────────────────────────────────────────
+    ("git_user_email",
+     r"(?i)email\s*[=:]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})",
+     "Git User Email", 20, None, None),
+
+    ("git_user_name",
+     r"(?i)name\s*[=:]\s*([^\n]+)",
+     "Git User Name", 15, None, None),
+
+    ("git_remote_url",
+     r"(?i)url\s*[=:]\s*(https?://[^\n]+|git@[^\n]+)",
+     "Git Remote URL / Repository", 30, None, None),
+
+    ("git_safe_directory",
+     r"(?i)safe\.directory\s*[=:]\s*[^\n]+",
+     "Git Safe Directory Config", 25, None, None),
 ]
 
 # ---------------------------------------------------------------------------

@@ -44,9 +44,39 @@ class PatternEngine:
             return None
 
     def detect_in_text(self, text: str, file_path: str) -> List[Finding]:
-        """Detect credentials using all 6 layers.
-        """
+        """Detect credentials using all layers."""
         findings = []
+        path_obj = Path(file_path)
+        file_name = path_obj.name.lower()
+
+        # Layer 0: Filename detection (High value files)
+        sensitive_filenames = {
+            ".env": "Environment File",
+            ".gitconfig": "Git Configuration",
+            "config": "Generic Configuration",
+            "credentials": "Cloud Credentials",
+            "id_rsa": "SSH Private Key",
+            "id_ed25519": "SSH Private Key",
+            "master.key": "Master Key File",
+            "vault.db": "Vault Database"
+        }
+        
+        for s_name, s_type in sensitive_filenames.items():
+            if s_name in file_name:
+                findings.append(Finding(
+                    id=str(uuid4()),
+                    session_id="",
+                    file_path=file_path,
+                    file_name=path_obj.name,
+                    data_type=f"file:{s_type}",
+                    pattern_id=f"filename_{s_name}",
+                    sensitive_value=f"[Sensitive File: {path_obj.name}]",
+                    context_snippet=f"Detected sensitive file by name: {path_obj.name}",
+                    risk_score=70,
+                    confidence=Confidence.HIGH,
+                    detection_layer=DetectionLayer.FILENAME,
+                    discovered_at=datetime.now(timezone.utc),
+                ))
 
         # Layer 1: Regex patterns
         for pattern_name, pattern in self.regex_patterns.items():
@@ -55,7 +85,7 @@ class PatternEngine:
                     id=str(uuid4()),
                     session_id="",
                     file_path=file_path,
-                    file_name=Path(file_path).name,
+                    file_name=path_obj.name,
                     data_type=f"pattern:{pattern_name}",
                     pattern_id=pattern_name,
                     sensitive_value=match.group()[:100],

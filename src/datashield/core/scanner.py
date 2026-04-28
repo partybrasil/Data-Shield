@@ -21,60 +21,55 @@ from ..config.settings import ScanConfig
 class Scanner:
     """Main scanning engine."""
 
-    def __init__(self, config: ScanConfig, session: Session, event_bus: Optional[EventBus] = None):
+    def __init__(self, config: ScanConfig, session_factory: Callable[[], Session], event_bus: Optional[EventBus] = None):
         """Initialize scanner.
 
         Args:
             config: Scan configuration
-            session: Database session
+            session_factory: Database session factory (SessionLocal)
             event_bus: Optional event bus for notifications
         """
         self.config = config
-        self.session = session
+        self.session_factory = session_factory
         self.event_bus = event_bus or EventBus()
         self.pattern_engine = PatternEngine()
         self.fingerprinter = AppFingerprinter()
-        self.repo = ScanSessionRepository(session)
         self.is_paused = False
         self.should_stop = False
 
     def scan(self, target_path: str, callback: Optional[Callable] = None) -> str:
-        """Perform a file system scan.
-
-        Args:
-            target_path: Path to scan
-            callback: Optional progress callback
-
-        Returns:
-            Scan session ID
-        """
+        """Perform a file system scan."""
         scan_id = str(uuid4())
         target = Path(target_path).expanduser()
 
         if not target.exists():
             raise ValueError(f"Path does not exist: {target}")
 
-        # Create scan session
-        scan_session = ScanSessionDB(
-            id=scan_id,
-            target_path=str(target),
-            mode=self.config.mode,
-            status="running",
-        )
-        self.repo.create(scan_session)
-
-        # Emit start event
-        self.event_bus.emit(
-            Event(
-                type=EventType.SCAN_STARTED,
-                timestamp=datetime.utcnow(),
-                data={"session_id": scan_id, "target": str(target)},
-            )
-        )
-
+        session = self.session_factory()
+        repo = ScanSessionRepository(session)
+        
         try:
+            # Create scan session
+            scan_session = ScanSessionDB(
+                id=scan_id,
+                target_path=str(target),
+                mode=self.config.mode,
+                status="running",
+            )
+            repo.create(scan_session)
+
+            # Emit start event
+            self.event_bus.emit(
+                Event(
+                    type=EventType.SCAN_STARTED,
+                    timestamp=datetime.utcnow(),
+                    data={"session_id": scan_id, "target": str(target)},
+                )
+            )
+
             self._scan_directory(target, scan_id, callback)
-            self.repo.update(scan_id, status="completed", end_time=datetime.utcnow())
+            repo.update(scan_id, status="completed", end_time=datetime.utcnow())
+            
             self.event_bus.emit(
                 Event(
                     type=EventType.SCAN_COMPLETED,
@@ -83,7 +78,7 @@ class Scanner:
                 )
             )
         except Exception as e:
-            self.repo.update(
+            repo.update(
                 scan_id, status="failed", error_message=str(e), end_time=datetime.utcnow()
             )
             self.event_bus.emit(
@@ -94,19 +89,15 @@ class Scanner:
                     data={"session_id": scan_id},
                 )
             )
+        finally:
+            session.close()
 
         return scan_id
 
     def _scan_directory(
         self, path: Path, session_id: str, callback: Optional[Callable] = None
     ):
-        """Recursively scan directory.
-
-        Args:
-            path: Directory to scan
-            session_id: Associated scan session ID
-            callback: Progress callback
-        """
+        """Recursively scan directory."""
         files = self._get_files(path)
         total = len(files)
 
@@ -115,49 +106,60 @@ class Scanner:
                 executor.submit(self._scan_file, f, session_id): f for f in files
             }
 
-            for i, future in enumerate(as_completed(futures)):
-                if self.should_stop:
-                    break
+            session = self.session_factory()
+            from ..core.findings import FindingService
+            service = FindingService(session)
+            
+            try:
+                for i, future in enumerate(as_completed(futures)):
+                    if self.should_stop:
+                        break
 
-                try:
-                    future.result()
-                except Exception:
-                    pass
+                    try:
+                        findings = future.result()
+                        for finding in findings:
+                            service.create_finding(
+                                file_path=finding.file_path,
+                                pattern_name=finding.data_type,
+                                match_text=finding.sensitive_value or "",
+                                risk_score=float(finding.risk_score),
+                                confidence=1.0,
+                                session_id=session_id,
+                            )
+                    except Exception:
+                        pass
 
-                if callback:
-                    callback(i + 1, total)
+                    if callback:
+                        callback(i + 1, total)
+                
+                session.commit()
+            finally:
+                session.close()
 
     def _get_files(self, path: Path) -> List[Path]:
-        """Get all files from directory recursively.
-
-        Args:
-            path: Directory path
-
-        Returns:
-            List of file paths.
-        """
+        """Get all files from directory recursively."""
         files = []
         exclude_dirs = set(self.config.exclude_dirs)
 
         for item in path.rglob("*"):
-            if item.is_file() and all(
-                excluded not in item.parts for excluded in exclude_dirs
-            ):
+            if item.is_file():
+                # Only exclude if the excluded directory is WITHIN the target path
+                try:
+                    relative_path = item.relative_to(path)
+                    if any(excluded in relative_path.parts for excluded in exclude_dirs):
+                        continue
+                except ValueError:
+                    # Fallback for paths that might not be relative for some reason
+                    if any(excluded in item.parts for excluded in exclude_dirs):
+                        continue
+                
                 if item.stat().st_size <= self.config.max_file_size:
                     files.append(item)
 
         return files
 
     def _scan_file(self, file_path: Path, session_id: str) -> List[Finding]:
-        """Scan a single file.
-
-        Args:
-            file_path: File to scan
-            session_id: Associated scan session ID
-
-        Returns:
-            List of findings.
-        """
+        """Scan a single file and return findings."""
         findings = []
 
         try:
@@ -168,26 +170,18 @@ class Scanner:
             except Exception:
                 return findings
 
-            # Detect patterns
+            # Detect patterns using engine
             findings = self.pattern_engine.detect_in_text(content, str(file_path))
-
-            # Score each finding
+            
+            # Additional scoring
             for finding in findings:
-                finding.risk_score = compute_risk_score(finding)
-
-            # Store findings
-            for finding in findings:
-                from ..core.findings import FindingService
-
-                service = FindingService(self.session)
-                service.create_finding(
+                score, level = compute_risk_score(
+                    pattern_id=finding.pattern_id,
                     file_path=finding.file_path,
-                    pattern_name=finding.pattern_name,
-                    match_text=finding.match_text or "",
-                    risk_score=finding.risk_score,
-                    confidence=finding.confidence,
-                    session_id=session_id,
+                    detection_layer=finding.detection_layer.value if hasattr(finding.detection_layer, "value") else str(finding.detection_layer)
                 )
+                finding.risk_score = score
+                finding.risk_level = level
 
         except Exception:
             pass

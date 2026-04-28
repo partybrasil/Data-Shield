@@ -45,9 +45,8 @@ def main():
             # Initialize components
             config = load_config()
             SessionLocal = init_db(str(config.database_url))
-            session = get_session(SessionLocal)
 
-            scanner = Scanner(config.scan, session, EventBus())
+            scanner = Scanner(config.scan, SessionLocal, EventBus())
             vault = Vault()
             monitor = Monitor(PatternEngine(), EventBus())
             exporter = Exporter()
