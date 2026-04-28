@@ -78,20 +78,29 @@ class ResultsTable(QTableWidget):
         self.setHorizontalHeaderLabels([
             "File Path", "Type", "Risk", "Confidence", "Detected"
         ])
-        self.resizeColumnsToContents()
+        self.horizontalHeader().setStretchLastSection(True)
+        self.setAlternatingRowColors(True)
+        self.setShowGrid(False)
+        self.setSelectionBehavior(QTableWidget.SelectRows)
 
     def add_finding(self, finding):
-        """Add a finding to the table.
-
-        Args:
-            finding: Finding object
-        """
+        """Add a finding to the table."""
         row = self.rowCount()
         self.insertRow(row)
 
-        self.setItem(row, 0, QTableWidgetItem(finding.file_path[:100]))
+        self.setItem(row, 0, QTableWidgetItem(finding.file_path))
         self.setItem(row, 1, QTableWidgetItem(finding.data_type))
-        self.setItem(row, 2, QTableWidgetItem(str(finding.risk_score)))
+        
+        # Risk score with color (handled by QSS selection or manual if needed)
+        risk_item = QTableWidgetItem(str(finding.risk_score))
+        if finding.risk_score >= 70:
+            risk_item.setForeground(Qt.red)
+        elif finding.risk_score >= 40:
+            risk_item.setForeground(Qt.yellow)
+        else:
+            risk_item.setForeground(Qt.green)
+        self.setItem(row, 2, risk_item)
+
         confidence_str = finding.confidence.value if hasattr(finding.confidence, "value") else str(finding.confidence)
         self.setItem(row, 3, QTableWidgetItem(confidence_str))
         self.setItem(row, 4, QTableWidgetItem(finding.discovered_at.strftime("%H:%M:%S")))
@@ -114,25 +123,22 @@ class ProgressWidget(QWidget):
         layout = QVBoxLayout()
 
         self.progress_label = QLabel("Ready to scan")
+        self.progress_label.setAlignment(Qt.AlignCenter)
+        self.progress_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #00f2ff;")
         layout.addWidget(self.progress_label)
 
         self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedHeight(25)
         layout.addWidget(self.progress_bar)
 
         self.status_label = QLabel("Files scanned: 0/0")
+        self.status_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.status_label)
 
         self.setLayout(layout)
 
     def update_progress(self, current: int, total: int):
-        """Update progress display.
-
-        Args:
-            current: Current file count
-            total: Total files
-        """
+        """Update progress display."""
         if total > 0:
             percent = int((current / total) * 100)
             self.progress_bar.setValue(percent)
@@ -142,9 +148,6 @@ class ProgressWidget(QWidget):
 class VaultPanel(QWidget):
     """Panel for vault operations."""
 
-    encrypt_requested = Signal(str)  # finding_id
-    decrypt_requested = Signal(str)  # finding_id
-
     def __init__(self):
         """Initialize vault panel."""
         super().__init__()
@@ -153,37 +156,63 @@ class VaultPanel(QWidget):
     def init_ui(self):
         """Initialize UI."""
         layout = QVBoxLayout()
+        layout.setSpacing(20)
+        layout.setContentsMargins(50, 50, 50, 50)
+
+        # Padlock Icon (Decorative)
+        self.icon_label = QLabel("🔒")
+        self.icon_label.setStyleSheet("font-size: 80px;")
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.icon_label)
+
+        # Title
+        title = QLabel("Secure Vault Storage")
+        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #00f2ff;")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
 
         # Password input
-        pass_layout = QHBoxLayout()
-        pass_layout.addWidget(QLabel("Master Password:"))
         self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Enter Master Password")
         self.password_input.setEchoMode(QLineEdit.Password)
-        pass_layout.addWidget(self.password_input)
-        layout.addLayout(pass_layout)
+        self.password_input.setFixedWidth(300)
+        layout.addWidget(self.password_input, alignment=Qt.AlignCenter)
 
         # Vault status
-        self.status_label = QLabel("Vault: Locked")
+        self.status_label = QLabel("VAULT LOCKED")
+        self.status_label.setStyleSheet("color: #ff3e3e; font-weight: bold;")
+        self.status_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.status_label)
 
         # Buttons
-        btn_layout = QHBoxLayout()
-        unlock_btn = QPushButton("Unlock")
-        unlock_btn.clicked.connect(self.on_unlock_clicked)
-        btn_layout.addWidget(unlock_btn)
+        self.unlock_btn = QPushButton("Unlock Vault")
+        self.unlock_btn.setFixedWidth(200)
+        self.unlock_btn.clicked.connect(self.on_unlock_clicked)
+        layout.addWidget(self.unlock_btn, alignment=Qt.AlignCenter)
 
-        lock_btn = QPushButton("Lock")
-        lock_btn.clicked.connect(self.on_lock_clicked)
-        btn_layout.addWidget(lock_btn)
+        self.lock_btn = QPushButton("Lock Vault")
+        self.lock_btn.setObjectName("secondary")
+        self.lock_btn.setFixedWidth(200)
+        self.lock_btn.clicked.connect(self.on_lock_clicked)
+        self.lock_btn.hide()
+        layout.addWidget(self.lock_btn, alignment=Qt.AlignCenter)
 
-        layout.addLayout(btn_layout)
+        layout.addStretch()
         self.setLayout(layout)
 
     def on_unlock_clicked(self):
         """Handle unlock button."""
-        self.status_label.setText("Vault: Unlocked")
+        self.status_label.setText("VAULT UNLOCKED")
+        self.status_label.setStyleSheet("color: #00ffaa; font-weight: bold;")
+        self.icon_label.setText("🔓")
+        self.unlock_btn.hide()
+        self.lock_btn.show()
 
     def on_lock_clicked(self):
         """Handle lock button."""
-        self.status_label.setText("Vault: Locked")
+        self.status_label.setText("VAULT LOCKED")
+        self.status_label.setStyleSheet("color: #ff3e3e; font-weight: bold;")
+        self.icon_label.setText("🔒")
         self.password_input.clear()
+        self.lock_btn.hide()
+        self.unlock_btn.show()
