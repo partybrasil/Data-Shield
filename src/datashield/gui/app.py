@@ -21,10 +21,6 @@ class GuiApp:
         """
         self.app = QApplication(sys.argv)
         self.main_window = MainWindow(scanner, vault, monitor, exporter)
-        self.theme_manager = ThemeManager(self.app)
-        # Apply default dark theme
-        self.theme_manager.set_theme('dark')
-        self.main_window.set_theme_manager(self.theme_manager)
 
     def run(self):
         """Run the application.

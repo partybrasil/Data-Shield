@@ -1,87 +1,180 @@
-"""Main window for Data-Shield GUI."""
+"""Main window for Data-Shield GUI with Fluent Design."""
 
+import os
+from pathlib import Path
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QTabWidget, QStatusBar, QMenuBar, QMenu, QMessageBox,
-    QSystemTrayIcon, QFileDialog
+    QWidget, QVBoxLayout, QHBoxLayout, QMessageBox,
+    QSystemTrayIcon, QFileDialog, QLabel
 )
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QAction
+from PySide6.QtCore import Qt, QSize, Signal, QTimer, QSettings
+from PySide6.QtGui import QIcon, QAction, QColor, QPixmap, QPainter
+import psutil
+try:
+    import GPUtil
+except ImportError:
+    GPUtil = None
+
+from qfluentwidgets import (
+    NavigationItemPosition, FluentWindow, SubtitleLabel, 
+    setTheme, Theme, FluentIcon as FIF,
+    InfoBar, InfoBarIcon, InfoBarPosition,
+    PrimaryPushButton, PushButton, TransparentToolButton
+)
+
 from .widgets import ScanPanel, ResultsTable, ProgressWidget, VaultPanel, MonitorPanel, SettingsPanel
 from .theme import ThemeManager
 from .workers import VaultWorker
 
-class MainWindow(QMainWindow):
-    """Main application window."""
+class MainWindow(FluentWindow):
+    """Main application window using Fluent Design."""
 
     def __init__(self, scanner=None, vault=None, monitor=None, exporter=None):
+        # Persistence MUST be initialized before super().__init__() 
+        # because the base class triggers resizeEvent during initialization.
+        self.settings = QSettings("DataShield", "SecureScanner")
+        
         super().__init__()
         self.scanner = scanner
         self.vault = vault
         self.monitor = monitor
         self.exporter = exporter
         self.last_session_id = None
-
-        self.setWindowTitle("Data-Shield - Credential Security Tool")
-        self.setWindowIcon(QIcon.fromTheme("security-high"))
-        self.setGeometry(100, 100, 1200, 750)
-
         self.theme_manager = None
-        self.init_ui()
-        self.create_menu_bar()
+
+        # Basic setup
+        self.setWindowTitle("Data-Shield")
+        self.setWindowIcon(QIcon.fromTheme("security-high"))
+        
+        # Persistence
+        self.load_settings()
+
+        # Initialize sub-panels
+        self.init_panels()
+        
+        # Load persisted scan settings into UI
+        self.load_scan_settings()
+        
+        # Setup Navigation
+        self.init_navigation()
+        
+        # System Tray
         self.init_tray()
+        
+        # Stats Timer
+        self.stats_timer = QTimer(self)
+        self.stats_timer.timeout.connect(self.update_title_stats)
+        self.stats_timer.start(2000) # Update every 2 seconds
+        
+        # Apply Dark Theme
+        setTheme(Theme.DARK)
 
-    def init_ui(self):
-        """Initialize user interface."""
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout()
+    def load_settings(self):
+        """Restore window geometry."""
+        geometry = self.settings.value("geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        else:
+            self.resize(1100, 800)
+            
+    def save_settings(self):
+        """Save window geometry."""
+        self.settings.setValue("geometry", self.saveGeometry())
 
-        self.tabs = QTabWidget()
+    def update_title_stats(self):
+        """Update window title with system info and dimensions."""
+        cpu = psutil.cpu_percent()
+        ram = psutil.virtual_memory().percent
+        
+        gpu_str = ""
+        if GPUtil:
+            try:
+                gpus = GPUtil.getGPUs()
+                if gpus:
+                    gpu_str = f" | GPU: {int(gpus[0].load*100)}%"
+            except:
+                pass
+        
+        size = self.size()
+        stats = f"CPU: {cpu}% | RAM: {ram}%{gpu_str} | Res: {size.width()}x{size.height()}"
+        self.setWindowTitle(f"Data-Shield - Premium Security [{stats}]")
 
-        # Scan tab
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_title_stats()
+        self.save_settings()
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        self.save_settings()
+
+    def init_panels(self):
+        """Initialize all functional panels."""
+        # Scanner Panel
+        self.scanner_interface = QWidget()
+        scan_layout = QVBoxLayout(self.scanner_interface)
+        scan_layout.setContentsMargins(30, 30, 30, 30)
+        
+        self.scan_header = SubtitleLabel("System Security Scan", self.scanner_interface)
         self.scan_panel = ScanPanel()
         self.progress_widget = ProgressWidget()
         self.results_table = ResultsTable()
+        
         self.scan_panel.scan_requested.connect(self.start_scan)
         self.scan_panel.stop_requested.connect(self.stop_scan)
-
-        scan_layout = QVBoxLayout()
+        
+        scan_layout.addWidget(self.scan_header)
         scan_layout.addWidget(self.scan_panel)
         scan_layout.addWidget(self.progress_widget)
         scan_layout.addWidget(self.results_table)
-        scan_tab = QWidget()
-        scan_tab.setLayout(scan_layout)
-        self.tabs.addTab(scan_tab, "Scanner")
+        self.scanner_interface.setObjectName("scanner_interface")
 
-        # Vault tab
-        self.vault_panel = VaultPanel()
-        self.vault_panel.unlock_requested.connect(self.unlock_vault)
-        self.vault_panel.lock_requested.connect(self.lock_vault)
-        self.tabs.addTab(self.vault_panel, "Vault")
+        # Vault Panel
+        self.vault_interface = VaultPanel()
+        self.vault_interface.setObjectName("vault_interface")
+        self.vault_interface.unlock_requested.connect(self.unlock_vault)
+        self.vault_interface.lock_requested.connect(self.lock_vault)
 
-        # Monitor tab
-        self.monitor_panel = MonitorPanel()
-        self.tabs.addTab(self.monitor_panel, "Monitor")
+        # Monitor Panel
+        self.monitor_interface = MonitorPanel()
+        self.monitor_interface.setObjectName("monitor_interface")
 
-        # Settings tab
-        self.settings_panel = SettingsPanel()
-        self.tabs.addTab(self.settings_panel, "Settings")
+        # Settings Panel
+        self.settings_interface = SettingsPanel()
+        self.settings_interface.setObjectName("settings_interface")
+        self.settings_interface.settings_saved.connect(self.save_scan_settings)
 
-        main_layout.addWidget(self.tabs)
-        self.statusBar().showMessage("Ready")
-        central_widget.setLayout(main_layout)
-        self.create_toolbar()
+    def load_scan_settings(self):
+        """Load scan settings from persistence into UI."""
+        exclusions = self.settings.value("scan/exclusions", "node_modules, venv, .git, .venv")
+        threads = self.settings.value("scan/threads", 4, type=int)
+        
+        self.settings_interface.exclude_input.setText(exclusions)
+        self.settings_interface.threads_spin.setValue(threads)
+
+    def save_scan_settings(self, exclusions_list, threads):
+        """Save scan settings from UI to persistence."""
+        # Re-get the raw string from input for persistence
+        exclusions_str = self.settings_interface.exclude_input.text()
+        self.settings.setValue("scan/exclusions", exclusions_str)
+        self.settings.setValue("scan/threads", threads)
+        InfoBar.success(title="Settings Saved", content="Scan preferences updated and persisted.", parent=self)
+
+    def init_navigation(self):
+        """Setup the sidebar navigation."""
+        self.addSubInterface(self.scanner_interface, FIF.SEARCH, "Scanner")
+        self.addSubInterface(self.vault_interface, FIF.FINGERPRINT, "Vault")
+        self.addSubInterface(self.monitor_interface, FIF.PEOPLE, "Monitor")
+        
+        # Add settings to bottom
+        self.addSubInterface(self.settings_interface, FIF.SETTING, "Settings", NavigationItemPosition.BOTTOM)
 
     def init_tray(self):
         """Initialize system tray icon."""
         self.tray_icon = QSystemTrayIcon(self)
         
-        # Fallback icon if theme is missing
+        # Fallback icon logic
         icon = QIcon.fromTheme("security-high")
         if icon.isNull():
-            # Create a simple colored icon if theme icon not found
-            from PySide6.QtGui import QPixmap, QPainter, QColor
             pixmap = QPixmap(32, 32)
             pixmap.fill(Qt.transparent)
             painter = QPainter(pixmap)
@@ -92,6 +185,7 @@ class MainWindow(QMainWindow):
             
         self.tray_icon.setIcon(icon)
         
+        from PySide6.QtWidgets import QMenu
         tray_menu = QMenu()
         restore_action = tray_menu.addAction("Restore Window")
         restore_action.triggered.connect(self.showNormal)
@@ -106,167 +200,92 @@ class MainWindow(QMainWindow):
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
 
-    def stop_scan(self):
-        """Handle stop scan request."""
-        if self.scanner:
-            self.scanner.stop()
-            self.statusBar().showMessage("Stopping scan...")
-            self.scan_panel.stop_btn.setEnabled(False)
-
     def start_scan(self, path: str, mode: str):
         """Start a new scan session."""
         from .workers import ScanWorker
         
-        # Apply settings from settings panel
-        excludes = [s.strip() for s in self.settings_panel.exclude_input.text().split(",") if s.strip()]
+        excludes = [s.strip() for s in self.settings_interface.exclude_input.text().split(",") if s.strip()]
         self.scanner.config.exclude_dirs = excludes
-        self.scanner.config.thread_count = self.settings_panel.threads_spin.value()
-        self.scanner.should_stop = False # Reset stop flag
+        self.scanner.config.thread_count = self.settings_interface.threads_spin.value()
+        self.scanner.should_stop = False
 
         self.scan_panel.scan_btn.setEnabled(False)
         self.scan_panel.stop_btn.setEnabled(True)
         self.results_table.clear_results()
         self.progress_widget.update_progress(0, 1)
-        self.statusBar().showMessage("Scanning...")
         
-        self.last_session_id = None # Reset last session ID
+        InfoBar.info(
+            title="Scan Started",
+            content=f"Scanning directory: {path}",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=3000,
+            parent=self
+        )
+        
         self.scan_worker = ScanWorker(self.scanner, path, mode)
         self.scan_worker.progress.connect(self.progress_widget.update_progress)
         self.scan_worker.finished.connect(self.on_scan_finished)
         self.scan_worker.error.connect(self.on_scan_error)
         self.scan_worker.start()
 
+    def stop_scan(self):
+        if self.scanner:
+            self.scanner.stop()
+            self.scan_panel.stop_btn.setEnabled(False)
+            InfoBar.warning(title="Stopping Scan", content="Scan termination requested...", parent=self)
+
     def on_scan_finished(self, session_id: str):
-        """Handle scan completion."""
         self.last_session_id = session_id
         self.scan_panel.scan_btn.setEnabled(True)
         self.scan_panel.stop_btn.setEnabled(False)
+        
         from ..core.findings import FindingService
-        
-        self.statusBar().showMessage(f"Scan finished. Session: {session_id}")
-        
-        # Load findings from database
         session = self.scanner.session_factory()
         try:
             service = FindingService(session)
             findings = service.get_session_findings(session_id)
-            
             for finding in findings:
                 self.results_table.add_finding(finding)
         finally:
             session.close()
 
+        InfoBar.success(
+            title="Scan Complete",
+            content=f"Detected {len(findings)} potential threats.",
+            parent=self
+        )
+
     def on_scan_error(self, message: str):
-        """Handle scan error."""
         self.scan_panel.scan_btn.setEnabled(True)
         self.scan_panel.stop_btn.setEnabled(False)
-        self.statusBar().showMessage(f"Scan error: {message}")
-        QMessageBox.critical(self, "Scan Error", message)
-
-    def create_toolbar(self):
-        """Create main toolbar."""
-        from PySide6.QtCore import QSize
-        toolbar = self.addToolBar("Main")
-        toolbar.setMovable(False)
-        toolbar.setIconSize(QSize(24, 24))
-
-        export_json = QAction("Export JSON", self)
-        export_json.triggered.connect(lambda: self.export_results("json"))
-        toolbar.addAction(export_json)
-
-        export_csv = QAction("Export CSV", self)
-        export_csv.triggered.connect(lambda: self.export_results("csv"))
-        toolbar.addAction(export_csv)
+        InfoBar.error(title="Scan Error", content=message, parent=self)
 
     def unlock_vault(self, password: str):
-        """Handle vault unlock request."""
-        self.statusBar().showMessage("Unlocking vault...")
         self.vault_worker = VaultWorker(self.vault, "unlock", password)
         self.vault_worker.finished.connect(self.on_vault_unlocked)
         self.vault_worker.error.connect(self.on_vault_error)
         self.vault_worker.start()
 
-    def lock_vault(self):
-        """Handle vault lock request."""
-        self.vault.lock()
-        self.vault_panel.set_unlocked(False)
-        self.statusBar().showMessage("Vault locked")
-
     def on_vault_unlocked(self):
-        """Handle successful vault unlock."""
-        self.vault_panel.set_unlocked(True)
-        self.statusBar().showMessage("Vault unlocked")
+        self.vault_interface.set_unlocked(True)
+        InfoBar.success(title="Vault Unlocked", content="Secure storage is now accessible.", parent=self)
 
     def on_vault_error(self, message: str):
-        """Handle vault operation error."""
-        self.statusBar().showMessage(f"Vault error: {message}")
-        QMessageBox.warning(self, "Vault Error", message)
+        InfoBar.error(title="Vault Error", content=message, parent=self)
 
-    def export_results(self, format_name: str):
-        """Export scan results."""
-        if self.results_table.rowCount() == 0:
-            QMessageBox.warning(self, "Export", "No results to export")
-            return
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export Results", "", f"{format_name.upper()} Files (*.{format_name})"
-        )
-        
-        if file_path:
-            try:
-                from ..core.findings import FindingService
-                findings = []
-                if self.last_session_id:
-                    session = self.scanner.session_factory()
-                    try:
-                        service = FindingService(session)
-                        findings = service.get_session_findings(self.last_session_id)
-                    finally:
-                        session.close()
-                
-                self.exporter.export(file_path, format_name, findings)
-                QMessageBox.information(self, "Export", f"{len(findings)} results exported to {file_path}")
-            except Exception as e:
-                QMessageBox.critical(self, "Export Error", str(e))
-
-    def create_menu_bar(self):
-        """Create application menu bar."""
-        menu_bar = self.menuBar()
-
-        # File menu
-        file_menu = menu_bar.addMenu("File")
-        exit_action = file_menu.addAction("Exit")
-        exit_action.triggered.connect(self.close)
-
-        # View menu
-        view_menu = menu_bar.addMenu("View")
-        theme_action = view_menu.addAction("Toggle Theme")
-        theme_action.triggered.connect(self.toggle_theme)
-
-        # Help menu
-        help_menu = menu_bar.addMenu("Help")
-        about_action = help_menu.addAction("About")
-        about_action.triggered.connect(self.show_about)
-
-    def toggle_theme(self):
-        """Toggle application theme."""
-        if self.theme_manager:
-            self.theme_manager.toggle_theme()
-
-    def show_about(self):
-        """Show about dialog."""
-        QMessageBox.information(
-            self,
-            "About Data-Shield",
-            "Data-Shield v0.2.0\n\n"
-            "Sensitive credential scanner and encryption vault for Windows.\n\n"
-            "© 2026 Data-Shield Team"
-        )
+    def lock_vault(self):
+        self.vault.lock()
+        self.vault_interface.set_unlocked(False)
+        InfoBar.info(title="Vault Locked", content="Secure storage is now encrypted.", parent=self)
 
     def set_theme_manager(self, theme_manager: ThemeManager):
-        """Set theme manager instance.
-
-        Args:
-            theme_manager: ThemeManager instance
-        """
         self.theme_manager = theme_manager
+
+    def closeEvent(self, event):
+        """Ensure vault is locked on close."""
+        if self.vault:
+            self.vault.lock()
+        self.tray_icon.hide()
+        super().closeEvent(event)

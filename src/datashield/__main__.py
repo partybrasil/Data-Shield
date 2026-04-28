@@ -31,6 +31,7 @@ def main():
     """Main entry point for datashield command."""
     if should_launch_gui(sys.argv[1:]):
         # Launch GUI
+        # Launch GUI
         try:
             from .gui.app import GuiApp
             from .config.loader import load_config
@@ -54,8 +55,9 @@ def main():
             # Launch GUI
             app = GuiApp(scanner, vault, monitor, exporter)
             sys.exit(app.run())
-        except ImportError:
-            print("GUI dependencies not installed. Install with: pip install -e '.[gui]'")
+        except ImportError as e:
+            print(f"GUI dependencies missing or error during load: {e}")
+            print("Install with: pip install -e '.[gui]'")
             sys.exit(1)
     else:
         # Launch CLI

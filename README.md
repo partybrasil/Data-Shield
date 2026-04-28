@@ -18,7 +18,7 @@ Después de un día de trabajo usando múltiples herramientas (VS Code, Git, Git
 - ✅ Cifra automáticamente con **AES-256-GCM + PBKDF2** en tu "Vault"
 - ✅ Integración con **Windows Task Scheduler** para cifrado automático al apagar / descifrado al iniciar
 - ✅ Monitor en **tiempo real** para nuevas credenciales
-- ✅ Interfaz dual: **CLI poderosa** (Rich + Colorama) + **GUI moderna** (PySide6 Material Neon Dark/White)
+- ✅ Interfaz dual: **CLI poderosa** (Rich + Colorama) + **GUI moderna** (PySide6 Fluent Design / Windows 11 Mica)
 - ✅ Exportación limpia: TXT, JSON, CSV, HTML interactivo
 
 ---
@@ -26,13 +26,10 @@ Después de un día de trabajo usando múltiples herramientas (VS Code, Git, Git
 ## 📸 Muestras de Interfaz
 
 ### 🖥️ Interfaz Gráfica (GUI)
-Moderno diseño **Neon Dark Mode** basado en PySide6 con visualización en tiempo real y gestión intuitiva.
+Moderno diseño **Fluent Design (Windows 11)** basado en PySide6 con efectos de mica/acrílico, navegación lateral y monitorización en tiempo real.
 
-![Data-Shield GUI Scanner](docs/images/gui_scanner.png)
-*Panel principal de escaneo con indicadores de progreso y tabla de hallazgos.*
-
-![Data-Shield GUI Vault](docs/images/gui_vault.png)
-*Gestión de la Bóveda Segura para el cifrado de credenciales críticas.*
+![Data-Shield GUI Scanner](docs/images/gui_fluent_scanner.png)
+*Panel principal de escaneo con diseño Fluent y monitor de recursos en la barra de título.*
 
 ### ⌨️ Interfaz de Línea de Comandos (CLI)
 Potente CLI diseñada para automatización y uso profesional con reportes en formato Rich.
@@ -73,9 +70,10 @@ Compression:        Optional SQLite compression for large scan histories
 
 ### GUI Framework
 ```
-PySide6:            6.8.x (Qt 6.8) — Material Modern Neon Dark/White theme
-Charts:             PySide6-QtCharts — risk distribution, statistics
-QSS:                Complete stylesheet with neon accents, smooth animations
+PySide6:            6.8.x (Qt 6.8) — Modern Windows 11 Fluent Design
+UI Library:         PySide6-Fluent-Widgets — Sidebar navigation, Mica effect, InfoBars
+Stats:              psutil + GPUtil — CPU, RAM & GPU real-time monitoring in title bar
+Persistence:        QSettings — Persistent window geometry and scan configurations
 Responsive:         Works on 1920x1080 minimum, adaptive layouts
 ```
 
@@ -193,22 +191,11 @@ datashield/
 │       │
 │       ├── gui/
 │       │   ├── __init__.py
-│       │   ├── app.py                 ← QApplication, event loop, instance check
-│       │   ├── main_window.py         ← QMainWindow + QSplitter (controls | results)
-│       │   ├── theme.py               ← QSS loader, dark/light toggle
-│       │   ├── workers.py             ← QThread workers for scan, vault, monitor (non-blocking)
-│       │   ├── widgets/
-│       │   │   ├── __init__.py
-│       │   │   ├── scan_panel.py      ← Directory picker, depth, mode, exclusions
-│       │   │   ├── results_table.py   ← QTableView + custom model (thousands of rows)
-│       │   │   ├── progress_widget.py ← QProgressBar + active path label
-│       │   │   ├── detail_window.py   ← Modal: full finding details, actions, history
-│       │   │   ├── filter_bar.py      ← Real-time filters (risk, app, type, search)
-│       │   │   ├── vault_panel.py     ← Encrypt/decrypt controls, batch ops
-│       │   │   ├── monitor_panel.py   ← Monitor start/stop, whitelist management
-│       │   │   ├── risk_chart.py      ← Pie/bar chart of risk distribution
-│       │   │   ├── export_dialog.py   ← Pre-export editor: checkboxes, format picker, clean list
-│       │   │   └── tray_icon.py       ← System tray with context menu, status indicator
+│       │   ├── app.py                 ← QApplication, Fluent UI initialization
+│       │   ├── main_window.py         ← FluentWindow with Sidebar Navigation
+│       │   ├── theme.py               ← Theme manager (Dark/Light support)
+│       │   ├── workers.py             ← QThread workers for non-blocking ops
+│       │   ├── widgets.py             ← Modern Fluent components (Scan, Vault, etc.)
 │       │   └── resources/
 │       │       ├── icons/             ← App icons, status icons, risk badges
 │       │       └── styles/
@@ -262,8 +249,11 @@ cd data-shield
 python -m venv venv
 .\venv\Scripts\activate
 
-# Instalar dependencias + modo desarrollo
+# Instalar dependencias base + modo desarrollo
 pip install -e .
+
+# Instalar dependencias de la Interfaz Gráfica (GUI)
+pip install -e ".[gui]"
 
 # (Opcional) Instalar extras para desarrollo y tests
 pip install -e ".[dev,test]"
@@ -304,7 +294,7 @@ datashield-admin update-signatures --dry-run
 #### GUI (Interfaz Gráfica)
 ```bash
 # Lanzar GUI
-datashield
+python -m datashield --gui
 
 # O simplemente hacer doble clic en datashield.exe
 ```
@@ -508,11 +498,11 @@ Tabla de resultados con colores ANSI:
 └─────────────────────────────┴──────────────────┴────────────┴────────────┴──────────┘
 ```
 
-### GUI (PySide6 + Material Modern Neon)
-- **Material Modern Neon Dark**: Tema oscuro azulado con acentos neón (cyan, magenta, lima, naranja)
-- **Light Mode**: Variante clara para preferencias de usuario
-- **Responsive**: Diseño adaptativo, funciona en 1920x1080+
-- **Smooth animations**: Transiciones suaves, no jarring
+### GUI (PySide6 + Fluent Design)
+- **Fluent Design (Windows 11)**: Interfaz moderna con efectos de transparencia, navegación lateral y bordes redondeados.
+- **Resource Monitor**: Barra de título dinámica con consumo de CPU, RAM, GPU y resolución.
+- **Persistence**: Recuerda tamaño de ventana y ajustes de escaneo automáticamente.
+- **Responsive**: Diseño adaptativo que aprovecha pantallas de alta resolución.
 - **Paneles**:
   - Izquierda: Controles (selección de directorio, opciones, botones)
   - Centro: Barra de progreso activa
@@ -620,7 +610,7 @@ htmlcov/
 - [ ] Risk Scorer
 - [ ] Vault (AES-256)
 - [ ] CLI (Rich + Click)
-- [ ] GUI (PySide6 Material Neon)
+- [x] GUI (PySide6 Fluent Design)
 - [ ] Monitor Mode (Watchdog)
 - [ ] Exporters (TXT, JSON, CSV, HTML)
 - [ ] Windows integration (UAC, Credential Manager, Registry)

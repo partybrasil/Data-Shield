@@ -75,6 +75,11 @@ dev = [
 build = [
     "PyInstaller>=6.10.0",
 ]
+gui = [
+    "PySide6-Fluent-Widgets>=1.1.0",
+    "GPUtil>=1.4.0",
+    "psutil>=6.1.0",
+]
 
 [project.scripts]
 datashield = "datashield.__main__:main"
