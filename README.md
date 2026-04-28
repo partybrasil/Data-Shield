@@ -419,6 +419,10 @@ Noche:
 
 ### Escaneo
 - ✅ Profundidad configurable (0 = ilimitado)
+- ✅ **3 Modos de Operación**:
+  - **PERFORMANCE**: Máximo CPU/RAM/GPU, ~2-3 min para 100k archivos
+  - **SAFE**: Bajo impacto de recursos, ~8-10 min para 100k archivos (default)
+  - **INTERACTIVE**: Pausa en cada hallazgo, espera decisión del usuario
 - ✅ Modo turbo (solo archivos de riesgo) vs. Modo profundo (análisis byte a byte)
 - ✅ Incluir/excluir directorios
 - ✅ Pausa y resume (con checkpoint automático cada 500 archivos)

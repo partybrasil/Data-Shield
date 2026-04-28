@@ -353,9 +353,12 @@ Each module completes only when:
 ### Per-Phase Exit Checklist
 
 **Phase 1**:
-- ✅ `datashield scan` fully functional
+- ✅ `datashield scan` fully functional (3 modes: performance, safe, interactive)
 - ✅ All CLI commands working
 - ✅ SQLite DB persists findings
+- ✅ Vault manual encrypt/decrypt working
+- ✅ Auto-schedule config module (disabled by default, user activates)
+- ✅ All 3 operation modes testable via CLI
 - ✅ Tests >85% coverage
 - ✅ Tag `v0.1.0-cli-alpha` committed
 
@@ -363,7 +366,10 @@ Each module completes only when:
 - ✅ GUI launches, no crashes
 - ✅ All widgets render correctly
 - ✅ Theme dark/light toggles work
-- ✅ Vault encryption/decryption works
+- ✅ Vault encryption/decryption works (manual + auto-schedule UI)
+- ✅ Auto-schedule Task Scheduler integration (disabled by default)
+- ✅ Operation mode selector in UI (performance/safe/interactive)
+- ✅ Interactive mode pauses and waits for user action
 - ✅ Monitor detects changes
 - ✅ Export formats correct
 - ✅ `datashield.exe` runs standalone
