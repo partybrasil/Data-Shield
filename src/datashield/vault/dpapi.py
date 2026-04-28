@@ -1,42 +1,43 @@
 """Windows DPAPI integration for master key management."""
 
 from typing import Optional
-from pathlib import Path
+import os
+
+try:
+    import win32crypt
+except ImportError:
+    win32crypt = None
 
 
 def get_dpapi_key(key_name: str = "data-shield-master") -> Optional[bytes]:
     """Get or create DPAPI-protected master key.
-
-    Args:
-        key_name: Name of the DPAPI key
-
-    Returns:
-        Master key bytes or None if DPAPI unavailable
+    
+    This is a simplified version that would ideally check a secure storage location.
+    For this implementation, we simulate the retrieval logic.
     """
-    try:
-        import winreg
-
-        # In a real implementation, would store encrypted key in Windows registry
-        # For now, returns None - user must provide password
+    if win32crypt is None:
         return None
-    except ImportError:
-        return None
+    
+    # In a real app, we'd check registry/file for a blob and unprotect it
+    return None
 
 
-def protect_with_dpapi(data: bytes) -> bytes:
+def protect_with_dpapi(data: bytes, description: str = "Data-Shield Protection") -> bytes:
     """Protect data with Windows DPAPI.
 
     Args:
         data: Data to protect
+        description: Optional description for the blob
 
     Returns:
-        DPAPI-protected data
+        DPAPI-protected data (binary blob)
     """
+    if win32crypt is None:
+        return data
+        
     try:
-        import ctypes
-
-        # Would use ctypes to call CryptProtectData
-        return data  # Stub for now
+        # CryptProtectData(data, description, entropy, reserved, prompt, flags)
+        return win32crypt.CryptProtectData(data, description, None, None, None, 0)
     except Exception:
         return data
 
@@ -50,10 +51,12 @@ def unprotect_with_dpapi(protected_data: bytes) -> bytes:
     Returns:
         Unprotected data
     """
+    if win32crypt is None:
+        return protected_data
+        
     try:
-        import ctypes
-
-        # Would use ctypes to call CryptUnprotectData
-        return protected_data  # Stub for now
+        # CryptUnprotectData(data, entropy, reserved, prompt, flags)
+        description, data = win32crypt.CryptUnprotectData(protected_data, None, None, None, 0)
+        return data
     except Exception:
         return protected_data

@@ -87,21 +87,110 @@ def scan(path: str, mode: str, max_size: int, threads: int):
 
 
 @cli.command()
-def vault():
+@click.argument("action", type=click.Choice(["lock", "unlock", "status"]))
+@click.option("--password", prompt=True, hide_input=True, required=False, help="Master password")
+def vault(action: str, password: Optional[str] = None):
     """Manage credential vault (encrypt/decrypt)."""
-    console.print("[yellow]Vault management - coming in Phase 2[/yellow]")
+    from ..vault.vault import Vault
+    
+    vault_inst = Vault()
+    
+    if action == "status":
+        status = "Locked" if vault_inst.is_locked else "Unlocked"
+        console.print(f"Vault Status: [bold]{status}[/bold]")
+        return
+
+    if not password:
+        password = click.prompt("Enter master password", hide_input=True)
+
+    if action == "unlock":
+        if vault_inst.unlock(password):
+            console.print("[green]✓ Vault unlocked successfully[/green]")
+        else:
+            console.print("[red]✗ Invalid password[/red]")
+    elif action == "lock":
+        vault_inst.lock()
+        console.print("[yellow]Vault locked[/yellow]")
 
 
 @cli.command()
-def monitor():
+@click.option("--dir", "directories", multiple=True, help="Directories to monitor")
+@click.option("--threshold", type=int, default=70, help="Risk threshold for alerts")
+def monitor(directories: List[str], threshold: int):
     """Monitor for new credentials in real-time."""
-    console.print("[yellow]Real-time monitoring - coming in Phase 2[/yellow]")
+    from ..monitor.monitor import Monitor
+    from ..core.pattern_engine import PatternEngine
+    from ..core.events import EventBus
+    
+    if not directories:
+        directories = [str(Path.home())]
+        
+    engine = PatternEngine()
+    bus = EventBus()
+    monitor_inst = Monitor(engine, bus, alert_threshold=threshold, watch_dirs=list(directories))
+    
+    console.print(f"[bold green]Monitoring started on {len(directories)} directories...[/bold green]")
+    console.print("[dim]Press Ctrl+C to stop[/dim]")
+    
+    try:
+        monitor_inst.start()
+        import time
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        monitor_inst.stop()
+        console.print("\n[yellow]Monitoring stopped[/yellow]")
 
 
 @cli.command()
-def export():
+@click.argument("format", type=click.Choice(["json", "csv", "txt", "html"]))
+@click.option("--output", type=click.Path(), help="Output file path")
+@click.option("--session", "session_id", help="Session ID to export")
+def export(format: str, output: Optional[str], session_id: Optional[str]):
     """Export findings to various formats."""
-    console.print("[yellow]Export functionality - coming in Phase 2[/yellow]")
+    from ..export.exporter import Exporter
+    from ..storage.database import init_db, get_session
+    from ..core.findings import FindingService
+    from ..config.loader import load_config
+    
+    config = load_config()
+    SessionLocal = init_db(str(config.database_url))
+    db_session = get_session(SessionLocal)
+    
+    try:
+        service = FindingService(db_session)
+        if not session_id:
+            # Get latest session
+            latest_session = service.get_latest_session()
+            if not latest_session:
+                console.print("[red]No scan sessions found[/red]")
+                return
+            session_id = latest_session.id
+        
+        scan_session = service.get_session(session_id)
+        findings = service.get_session_findings(session_id)
+        
+        if not findings:
+            console.print(f"[yellow]No findings found for session {session_id}[/yellow]")
+            return
+            
+        exporter = Exporter(output_dir=Path(output).parent if output else None)
+        filename = Path(output).name if output else f"export_{session_id}.{format}"
+        
+        path = None
+        if format == "json":
+            path = exporter.to_json(findings, scan_session, filename)
+        elif format == "csv":
+            path = exporter.to_csv(findings, filename)
+        elif format == "txt":
+            path = exporter.to_txt(findings, scan_session, filename)
+        elif format == "html":
+            path = exporter.to_html(findings, scan_session, filename)
+            
+        console.print(f"[green]✓ Exported {len(findings)} findings to {path}[/green]")
+        
+    finally:
+        db_session.close()
 
 
 def main():

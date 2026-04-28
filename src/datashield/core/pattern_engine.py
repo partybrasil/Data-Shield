@@ -26,39 +26,34 @@ class PatternEngine:
         self.entropy_threshold = 3.5
 
     def _load_yara_rules(self) -> Optional[yara.Rules]:
-        """Load YARA rules (stub implementation)."""
+        """Load YARA rules from patterns directory."""
         try:
-            # In full implementation, load from yara_rules/ directory
-            return None
+            rules_dir = Path(__file__).parent.parent / "patterns" / "yara_rules"
+            if not rules_dir.exists():
+                return None
+                
+            rule_files = {}
+            for yar_file in rules_dir.glob("*.yar"):
+                rule_files[yar_file.stem] = str(yar_file)
+            
+            if not rule_files:
+                return None
+                
+            return yara.compile(filepaths=rule_files)
         except Exception:
             return None
 
     def detect_in_text(self, text: str, file_path: str) -> List[Finding]:
         """Detect credentials using all 6 layers.
-
-        Layers:
-        1. Regex patterns (known formats)
-        2. YARA rules (binary/content patterns)
-        3. Entropy analysis (random-looking strings)
-        4. App parsers (config files)
-        5. Fingerprinting (app-specific)
-        6. Structural analysis (context clues)
-
-        Args:
-            text: Text content to scan
-            file_path: Path to file being scanned
-
-        Returns:
-            List of findings.
         """
         findings = []
 
         # Layer 1: Regex patterns
         for pattern_name, pattern in self.regex_patterns.items():
             for match in pattern.finditer(text):
-                finding = Finding(
+                findings.append(Finding(
                     id=str(uuid4()),
-                    session_id="",  # Will be set by caller
+                    session_id="",
                     file_path=file_path,
                     file_name=Path(file_path).name,
                     data_type=f"pattern:{pattern_name}",
@@ -69,17 +64,38 @@ class PatternEngine:
                     confidence=Confidence.HIGH,
                     detection_layer=DetectionLayer.REGEX,
                     discovered_at=datetime.now(timezone.utc),
-                )
-                findings.append(finding)
+                ))
+
+        # Layer 2: YARA rules
+        if self.yara_rules:
+            try:
+                matches = self.yara_rules.match(data=text)
+                for match in matches:
+                    findings.append(Finding(
+                        id=str(uuid4()),
+                        session_id="",
+                        file_path=file_path,
+                        file_name=Path(file_path).name,
+                        data_type=f"yara:{match.rule}",
+                        pattern_id=match.rule,
+                        sensitive_value="[YARA Match]",
+                        context_snippet=str(match.strings[:3]),
+                        risk_score=90,
+                        confidence=Confidence.HIGH,
+                        detection_layer=DetectionLayer.YARA,
+                        discovered_at=datetime.now(timezone.utc),
+                    ))
+            except Exception:
+                pass
 
         # Layer 3: Entropy analysis
         for line in text.split("\n"):
             if len(line) > 10:
                 entropy = _shannon_entropy(line.encode())
                 if entropy > self.entropy_threshold:
-                    finding = Finding(
+                    findings.append(Finding(
                         id=str(uuid4()),
-                        session_id="",  # Will be set by caller
+                        session_id="",
                         file_path=file_path,
                         file_name=Path(file_path).name,
                         data_type="entropy:high",
@@ -90,7 +106,6 @@ class PatternEngine:
                         confidence=Confidence.MEDIUM,
                         detection_layer=DetectionLayer.ENTROPY,
                         discovered_at=datetime.now(timezone.utc),
-                    )
-                    findings.append(finding)
+                    ))
 
         return findings

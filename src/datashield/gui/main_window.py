@@ -53,6 +53,9 @@ class MainWindow(QMainWindow):
         self.progress_widget = ProgressWidget()
         self.results_table = ResultsTable()
 
+        # Connect scan signals
+        self.scan_panel.scan_requested.connect(self.start_scan)
+
         scan_layout = QVBoxLayout()
         scan_layout.addWidget(self.scan_panel)
         scan_layout.addWidget(self.progress_widget)
@@ -77,6 +80,43 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Ready")
 
         central_widget.setLayout(main_layout)
+
+    def start_scan(self, path: str, mode: str):
+        """Start a new scan session.
+        
+        Args:
+            path: Directory to scan
+            mode: Scan mode
+        """
+        from .workers import ScanWorker
+        
+        self.results_table.clear_results()
+        self.progress_widget.update_progress(0, 1)
+        self.statusBar().showMessage("Scanning...")
+        
+        self.scan_worker = ScanWorker(self.scanner, path, mode)
+        self.scan_worker.progress.connect(self.progress_widget.update_progress)
+        self.scan_worker.finished.connect(self.on_scan_finished)
+        self.scan_worker.error.connect(self.on_scan_error)
+        self.scan_worker.start()
+
+    def on_scan_finished(self, session_id: str):
+        """Handle scan completion."""
+        from ..core.findings import FindingService
+        
+        self.statusBar().showMessage(f"Scan finished. Session: {session_id}")
+        
+        # Load findings from database
+        service = FindingService(self.scanner.session)
+        findings = service.get_session_findings(session_id)
+        
+        for finding in findings:
+            self.results_table.add_finding(finding)
+
+    def on_scan_error(self, message: str):
+        """Handle scan error."""
+        self.statusBar().showMessage(f"Scan error: {message}")
+        QMessageBox.critical(self, "Scan Error", message)
 
     def create_menu_bar(self):
         """Create application menu bar."""
