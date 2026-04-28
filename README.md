@@ -272,6 +272,11 @@ datashield monitor start C:\Users\tu-usuario
 # Historial de escaneos
 datashield history list
 datashield history diff scan_20250428_093211 scan_20250428_163515
+
+# UPDATE APP SIGNATURES (NEW!)
+datashield-admin update-signatures --source github
+datashield-admin update-signatures --source local-registry
+datashield-admin update-signatures --dry-run
 ```
 
 #### GUI (Interfaz Gráfica)
@@ -298,6 +303,13 @@ datashield
 | 6️⃣ **Fingerprinting de Apps** | Path matching + process enumeration | Identificar si VS Code, Git, Docker, Kubernetes, etc. usan el archivo |
 
 ### Tipos de Secretos Detectados
+
+**Auto-Updatable App Signatures** 🔄
+- Data-Shield **automatically discovers** new app credential locations
+- Daily updates from GitHub, OWASP, CVE databases, and local registry scans
+- Community contributions via GitHub PRs
+- See [`APP_SIGNATURES_UPDATE.md`](APP_SIGNATURES_UPDATE.md) for details
+- **Command**: `datashield-admin update-signatures`
 
 **Cloud & APIs**
 - AWS: access keys, secret keys, session tokens

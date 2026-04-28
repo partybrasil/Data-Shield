@@ -114,10 +114,17 @@ This document coordinates the complete architectural blueprint for Data-Shield w
    └─ Shannon entropy analysis
    └─ Independent module
 
-7. patterns/ (Detection patterns)
+7. patterns/ (Detection patterns + UPDATABLE APP SIGNATURES)
    ├─ regex_patterns.py (~200 compiled patterns)
    ├─ yara_rules/ (.yar files)
-   └─ app_signatures.py (40+ app definitions)
+   ├─ app_signatures.py (Pydantic BaseModel — 40+ apps, UPDATABLE)
+   └─ updater/ (NEW: Automated signature updates)
+       ├─ orchestrator.py (Fetch + extract + validate)
+       ├─ sources/ (GitHub, Reddit, OSINT, Registry, Local)
+       ├─ extractors/ (Path, credential, pattern extraction)
+       ├─ validators/ (Path verification, dedup, schema)
+       ├─ storage/ (Backup, version control, git commit)
+       └─ cli.py (Manual: datashield-admin update-signatures)
 
 8. core/pattern_engine.py
    └─ 6-layer detection coordination
@@ -142,6 +149,7 @@ This document coordinates the complete architectural blueprint for Data-Shield w
 13. core/scanner.py (FINAL CORE MODULE)
     └─ Main scanning engine
     └─ Depends on: ALL of above + asyncio
+    └─ NEW: Check app_signatures version, warn if outdated
 
 14. windows/ (Windows integration)
     ├─ elevation.py (UAC)
@@ -152,12 +160,13 @@ This document coordinates the complete architectural blueprint for Data-Shield w
 15. cli/ (Command-line interface)
     ├─ app.py (Click root + routing)
     ├─ display.py (Rich formatting)
-    └─ commands/ (scan, vault, monitor, export, history)
+    └─ commands/ (scan, vault, monitor, export, history, UPDATE-SIGNATURES-NEW)
 
 16. tests/ (Unit + integration tests)
     ├─ test_scanner.py
     ├─ test_pattern_engine.py
     ├─ test_vault.py (basic)
+    ├─ test_app_signatures_updater.py (NEW)
     └─ fixtures/
 
 **Phase 1 Exit Criteria**:
