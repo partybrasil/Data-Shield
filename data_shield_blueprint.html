@@ -1,0 +1,412 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.ds-root{padding:1.5rem 0;color:var(--color-text-primary)}
+.hero{text-align:center;margin-bottom:2rem}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:var(--color-background-danger);color:var(--color-text-danger);font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;margin-bottom:12px;letter-spacing:.04em}
+.hero h1{font-size:26px;font-weight:500;margin-bottom:6px}
+.hero p{font-size:13px;color:var(--color-text-secondary);max-width:520px;margin:0 auto}
+.section-title{font-size:11px;font-weight:500;letter-spacing:.08em;color:var(--color-text-tertiary);text-transform:uppercase;margin:2rem 0 .75rem}
+.stack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:.5rem}
+.stack-card{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.75rem 1rem}
+.stack-card .sc-label{font-size:10px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.35rem}
+.stack-card .sc-name{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:.2rem}
+.stack-card .sc-desc{font-size:11px;color:var(--color-text-secondary);line-height:1.4}
+.badge{display:inline-block;font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px;margin-top:.4rem}
+.badge-red{background:var(--color-background-danger);color:var(--color-text-danger)}
+.badge-blue{background:var(--color-background-info);color:var(--color-text-info)}
+.badge-green{background:var(--color-background-success);color:var(--color-text-success)}
+.badge-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.badge-gray{background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary)}
+.module-list{display:flex;flex-direction:column;gap:6px}
+.module{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.75rem 1rem;cursor:pointer;transition:border-color .15s}
+.module:hover{border-color:var(--color-border-primary)}
+.module-header{display:flex;align-items:center;gap:10px}
+.module-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.mi-red{background:var(--color-background-danger)}
+.mi-blue{background:var(--color-background-info)}
+.mi-green{background:var(--color-background-success)}
+.mi-warn{background:var(--color-background-warning)}
+.mi-purple{background:#EEEDFE}
+.mi-gray{background:var(--color-background-secondary)}
+.module-title{font-size:13px;font-weight:500;flex:1}
+.module-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:.5rem}
+.chip{font-size:10px;padding:2px 7px;border-radius:8px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.module-detail{display:none;margin-top:.6rem;padding-top:.6rem;border-top:0.5px solid var(--color-border-tertiary)}
+.module-detail ul{list-style:none;padding:0}
+.module-detail ul li{font-size:12px;color:var(--color-text-secondary);padding:3px 0;line-height:1.5}
+.module-detail ul li::before{content:"›";margin-right:6px;color:var(--color-text-tertiary)}
+.module.open .module-detail{display:block}
+.arch-flow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:.5rem}
+.arch-box{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.6rem .75rem;text-align:center}
+.arch-box .ab-label{font-size:10px;color:var(--color-text-tertiary);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em}
+.arch-box .ab-name{font-size:12px;font-weight:500}
+.arrow-row{display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;color:var(--color-text-tertiary);margin:4px 0}
+.scan-targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
+.target-pill{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.5rem .75rem;font-size:12px}
+.target-pill .tp-cat{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.2rem}
+.risk-row{display:flex;gap:6px;margin-top:.5rem;flex-wrap:wrap}
+.risk-tag{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:500}
+.rt-critical{background:#FCEBEB;color:#A32D2D}
+.rt-high{background:#FAEEDA;color:#854F0B}
+.rt-medium{background:#E6F1FB;color:#185FA5}
+.rt-low{background:#EAF3DE;color:#3B6D11}
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:2rem 0}
+.footer-note{font-size:11px;color:var(--color-text-tertiary);text-align:center;line-height:1.6}
+</style>
+<div class="ds-root">
+  <div class="hero">
+    <div class="hero-badge">⬡ CODENAME: DATA-SHIELD &nbsp;·&nbsp; v0.1-PROTOTYPE &nbsp;·&nbsp; WINDOWS 10/11</div>
+    <h1>Blueprint de Arquitectura</h1>
+    <p>Escáner de seguridad de precisión máxima — detección de credenciales, sesiones, tokens y secretos dispersos en cualquier directorio del sistema.</p>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="section-title">Stack tecnológico</div>
+  <div class="stack-grid">
+    <div class="stack-card">
+      <div class="sc-label">Core</div>
+      <div class="sc-name">Python 3.13</div>
+      <div class="sc-desc">Runtime principal, async/await nativo, type hints completos</div>
+      <span class="badge badge-green">Estable LTS</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">GUI</div>
+      <div class="sc-name">PySide6 + Qt 6.8</div>
+      <div class="sc-desc">Material Modern Neon Dark/White, QSS theming, QThread workers</div>
+      <span class="badge badge-blue">Latest</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">CLI</div>
+      <div class="sc-name">Rich 14 + Colorama</div>
+      <div class="sc-desc">Tablas, progress bars, Live rendering, syntax highlight</div>
+      <span class="badge badge-blue">Latest</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Detección</div>
+      <div class="sc-name">YARA-Python 4.5</div>
+      <div class="sc-desc">Reglas YARA para patrones binarios y textuales de secretos</div>
+      <span class="badge badge-red">Core engine</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Detección</div>
+      <div class="sc-name">Regex Engine</div>
+      <div class="sc-desc">re + regex lib. Patrones para API keys, JWTs, tokens OAuth</div>
+      <span class="badge badge-warn">Layered</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Análisis</div>
+      <div class="sc-name">Entropy (Shannon)</div>
+      <div class="sc-desc">Detecta blobs de alta entropía → secretos embebidos / cifrados</div>
+      <span class="badge badge-warn">Avanzado</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Persistencia</div>
+      <div class="sc-name">SQLite + SQLAlchemy</div>
+      <div class="sc-desc">Base local de resultados, historial de escaneos, diffs</div>
+      <span class="badge badge-gray">Local only</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Cifrado</div>
+      <div class="sc-name">Cryptography (Fernet)</div>
+      <div class="sc-desc">AES-128-CBC para Vault, PBKDF2 key derivation</div>
+      <span class="badge badge-red">Seguridad</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Monitoreo</div>
+      <div class="sc-name">Watchdog 5</div>
+      <div class="sc-desc">Filesystem events en tiempo real, alertas de nuevos secretos</div>
+      <span class="badge badge-blue">Realtime</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Windows</div>
+      <div class="sc-name">pywin32 + ctypes</div>
+      <div class="sc-desc">Elevación admin UAC, WinCredMgr, ACL, registry access</div>
+      <span class="badge badge-warn">Win 10/11</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Sistema</div>
+      <div class="sc-name">psutil 6</div>
+      <div class="sc-desc">Procesos activos, mapeo PID → app → archivo sensible</div>
+      <span class="badge badge-gray">Info</span>
+    </div>
+    <div class="stack-card">
+      <div class="sc-label">Async</div>
+      <div class="sc-name">asyncio + ThreadPoolExecutor</div>
+      <div class="sc-desc">Escaneo multi-hilo sin bloquear la UI</div>
+      <span class="badge badge-green">Rendimiento</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- MÓDULOS CORE -->
+  <div class="section-title">Módulos del sistema — haz clic para expandir</div>
+  <div class="module-list">
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-red">🔍</div>
+        <div class="module-title">Scanner Engine — núcleo de escaneo</div>
+        <span class="badge badge-red">Core</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">Async multi-hilo</span><span class="chip">Progress en vivo</span><span class="chip">Profundidad configurable</span><span class="chip">Archivos ocultos</span><span class="chip">Symlinks</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>Traversal recursivo desde el directorio elegido por el usuario hasta cualquier profundidad, incluidos archivos y carpetas ocultos (prefijo punto, atributos NTFS hidden/system)</li>
+          <li>Barra de progreso Rich en CLI con leyenda activa del archivo siendo escaneado, ETA dinámica y contador de hallazgos en vivo</li>
+          <li>En GUI: barra QProgressBar actualizada por QThread worker sin freeze de UI, con el path activo en un QLabel debajo</li>
+          <li>Modo turbo (solo extensiones de riesgo) y modo profundo (todos los archivos, análisis de entropía byte a byte)</li>
+          <li>Exclusión inteligente de directorios de sistema de Windows (WinSxS, $Recycle.Bin) salvo override explícito del usuario</li>
+          <li>Soporte de unidades de red mapeadas (\\UNC paths) y detección de permisos insuficientes con log de errores de acceso</li>
+          <li>Pausa / Resume del escaneo con persistencia del estado en SQLite para continuar tras reboot</li>
+          <li>Checkpoint automático cada N archivos para recuperación ante crash</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-warn">⚡</div>
+        <div class="module-title">Pattern Engine — detección multicapa</div>
+        <span class="badge badge-warn">Avanzado</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">YARA rules</span><span class="chip">Regex library</span><span class="chip">Entropy analysis</span><span class="chip">SQLite parser</span><span class="chip">JSON/YAML deep scan</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>YARA rules actualizables: detecta patrones binarios de claves privadas, certificados, blobs cifrados y formatos propietarios</li>
+          <li>Biblioteca de ~200 expresiones regulares para: API keys (AWS, GCP, Azure, OpenAI, Stripe, Twilio…), JWT (Header.Payload.Sig), OAuth tokens, GitHub/GitLab PAT, npm tokens, Docker auth, SSH private keys (RSA/Ed25519/ECDSA), PEM blocks, connection strings de DB, .env vars</li>
+          <li>Análisis de entropía Shannon: blobs con entropía > 7.2 bits/byte se marcan como potencialmente cifrados o codificados en base64 con secretos embebidos</li>
+          <li>Parser nativo de SQLite para leer cookies browsers (Chrome/Edge/Firefox/Brave/Opera) directamente desde los .sqlite sin copiar el archivo</li>
+          <li>Deep scan de JSON/YAML/TOML: traversal de árbol buscando keys sospechosas (password, secret, token, api_key, private_key, credential, auth…)</li>
+          <li>Detección de archivos de configuración de IDEs: VS Code (keytar, globalStorage, token), JetBrains (idea.key, passwords.xml)</li>
+          <li>Parser de formatos de credenciales Git: .git-credentials, .netrc, git config con insteadOf, GitHub CLI hosts.yml</li>
+          <li>Nivel de confianza por hallazgo: HIGH (match exacto de patrón conocido), MEDIUM (entropía + contexto), LOW (nombre de variable sospechoso)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-purple">🗂️</div>
+        <div class="module-title">App Fingerprinting — identificación de software</div>
+        <span class="badge badge-blue">Inteligente</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">Path signatures</span><span class="chip">PID → process map</span><span class="chip">Registry lookup</span><span class="chip">+40 apps reconocidas</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>Base de datos de firmas de path para +40 apps de desarrollo y productividad: VS Code, Git, GitHub CLI, Antigravity, Node/NPM, Docker, AWS CLI, GCloud, Azure CLI, Terraform, Ansible, kubectl, JetBrains suite, Postman, Insomnia, DBeaver, TablePlus, Sourcetree, Fork, Figma, Slack, Zoom, Chrome, Firefox, Edge, Brave…</li>
+          <li>Para cada archivo sensible encontrado: mapeo inverso path → nombre de app responsable → versión detectada (desde registry o executables)</li>
+          <li>Live process mapping con psutil: si el archivo está siendo usado por un proceso activo, muestra PID, nombre del proceso y usuario</li>
+          <li>Detección de apps que usan Windows Credential Manager para sus credenciales</li>
+          <li>Iconos de app en el dashboard GUI para identificación visual instantánea</li>
+          <li>Flag de app activa: si la app está corriendo en el momento del escaneo, advierte antes de cualquier operación sobre el archivo</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-blue">🖥️</div>
+        <div class="module-title">Dual Interface — CLI + GUI híbrida</div>
+        <span class="badge badge-blue">Hybrid</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">Rich tables</span><span class="chip">PySide6 dashboard</span><span class="chip">QSS dark/light</span><span class="chip">Mismos datos</span><span class="chip">Click-through</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>CLI autónoma: arranque con flags (--scan-path, --depth, --mode turbo/deep, --export, --vault), salida Rich con tablas, colores y progreso en vivo. Ideal para scripting y automatización</li>
+          <li>GUI Material Modern: tema neon dark predeterminado con toggle a white mode. QSS stylesheet completo, fuente Inter/Segoe UI Variable</li>
+          <li>Dashboard GUI: tabla interactiva con columnas Path, Archivo, Tipo de dato sensible, Dato encontrado, App responsable, Riesgo (chip colorizado), Acciones. Click en fila abre ventana de detalles</li>
+          <li>Ventana de detalles: preview del contenido (censurado por defecto con toggle reveal), botón "Abrir en explorador", botón "Cifrar ahora", botón "Agregar al Vault", historial de cambios del archivo</li>
+          <li>Filtros en tiempo real: por tipo, por app, por nivel de riesgo, por extensión de archivo, búsqueda de texto libre</li>
+          <li>Ambas interfaces comparten la misma base SQLite: los datos son idénticos, la presentación es diferente</li>
+          <li>Notificaciones Windows nativas (toast) cuando el escaneo finaliza o cuando el modo monitor detecta un nuevo secreto</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-red">🔐</div>
+        <div class="module-title">Vault Module — cifrado y gestión segura</div>
+        <span class="badge badge-red">Seguridad</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">AES-256</span><span class="chip">PBKDF2 + salt</span><span class="chip">One-click encrypt</span><span class="chip">Batch ops</span><span class="chip">Master key</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>Cifrado AES-256-GCM con clave derivada de master password via PBKDF2-HMAC-SHA256 (600k iteraciones), salt único por sesión</li>
+          <li>One-click encrypt desde cualquier hallazgo: el archivo original se reemplaza con su versión cifrada (.ds-vault) manteniendo el path intacto</li>
+          <li>One-click decrypt: restaura el archivo en su ubicación original con permisos preservados</li>
+          <li>Batch encrypt/decrypt: opera sobre toda la lista de resultados o una selección filtrada con una sola acción</li>
+          <li>Planificador integrado: cifrar automáticamente al apagar Windows, descifrar al iniciar sesión (integración con Task Scheduler)</li>
+          <li>Registro de Vault: qué archivos están cifrados, cuándo, hash SHA-256 del original para verificación de integridad al descifrar</li>
+          <li>Protección del master key con Windows DPAPI como capa adicional (opcional)</li>
+          <li>Modo "Panic": cifra todo el vault instantáneamente con hotkey configurable</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-green">📡</div>
+        <div class="module-title">Monitor Mode — vigilancia en tiempo real</div>
+        <span class="badge badge-green">Realtime</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">Watchdog FSEvents</span><span class="chip">Alertas toast</span><span class="chip">Auto-scan on change</span><span class="chip">Tray icon</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>Modo de vigilancia continua con Watchdog: monitorea directorios seleccionados y dispara escaneo inmediato de cualquier archivo nuevo o modificado</li>
+          <li>Alerta toast de Windows cuando se detecta un nuevo archivo sensible con preview del tipo de dato encontrado</li>
+          <li>Icono en system tray con indicador de estado (escaneando / monitoreando / alerta)</li>
+          <li>Log de eventos en tiempo real en CLI y panel lateral en GUI</li>
+          <li>Whitelist de rutas que nunca disparan alerta (configurables por el usuario)</li>
+          <li>Throttling inteligente: no re-escanea si el mismo archivo cambia más de N veces en M segundos (previene loops en apps que escriben frecuentemente)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-gray">📊</div>
+        <div class="module-title">Reports & Export — salidas y exportación</div>
+        <span class="badge badge-gray">Export</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">TXT plano</span><span class="chip">JSON estructurado</span><span class="chip">HTML report</span><span class="chip">CSV</span><span class="chip">Editar antes de exportar</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>Export a .txt plano (rutas, uno por línea, configurable el separador y el nivel de detalle)</li>
+          <li>Export a JSON estructurado con todos los metadatos: path, archivo, tipo, dato, app, nivel de riesgo, timestamp, hash</li>
+          <li>Export a HTML auto-contenido: reporte visual completo offline con tabla interactiva, estadísticas y gráficos de distribución de riesgo</li>
+          <li>Export a CSV para análisis en Excel/Sheets</li>
+          <li>Pre-export: editor de lista integrado. El usuario puede eliminar entradas individuales, marcar como "revisado/ignorar", limpiar la lista completa o filtrar antes de exportar</li>
+          <li>Historial de escaneos: cada escaneo guarda su timestamp y resultados en SQLite. Modo diff: compara dos escaneos y muestra qué cambió (archivos nuevos, eliminados, modificados)</li>
+          <li>Exportación de perfil de Vault: lista de archivos cifrados con rutas y timestamps, para documentación propia</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-warn">🛡️</div>
+        <div class="module-title">Risk Scoring Engine — puntuación de riesgo</div>
+        <span class="badge badge-warn">Scoring</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">Score 0-100</span><span class="chip">Weighted factors</span><span class="chip">Risk matrix</span><span class="chip">Prioritización</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>Cada hallazgo recibe un score de 0-100 basado en: tipo de secreto (SSH key = 95, cookie de sesión = 75, API key = 85…), contexto (plaintext = más alto, dentro de .git = más alto), antigüedad del archivo, si hay proceso activo usándolo</li>
+          <li>Matriz de riesgo: CRITICAL (score 85-100) → HIGH (65-84) → MEDIUM (40-64) → LOW (0-39)</li>
+          <li>Risk summary en dashboard: total de hallazgos, breakdown por nivel, archivos únicos afectados, apps involucradas</li>
+          <li>Sugerencias de acción automáticas según el tipo y score: "Revoca este token en GitHub", "Este archivo debería estar en .gitignore", "Añade al Vault para cifrar al finalizar el día"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="module" onclick="this.classList.toggle('open')">
+      <div class="module-header">
+        <div class="module-icon mi-red">⬆️</div>
+        <div class="module-title">Admin Elevation & Privilegios</div>
+        <span class="badge badge-red">Windows UAC</span>
+      </div>
+      <div class="module-chips">
+        <span class="chip">UAC auto-elevate</span><span class="chip">ctypes ShellExecute</span><span class="chip">Manifest runas</span><span class="chip">Token check</span>
+      </div>
+      <div class="module-detail">
+        <ul>
+          <li>Arranque con verificación automática de permisos de administrador via ctypes (IsUserAnAdmin)</li>
+          <li>Si no es admin: auto-relanzamiento con ShellExecute runas mostrando el diálogo UAC de Windows antes de cualquier escaneo</li>
+          <li>Manifest embebido en el ejecutable con requestedExecutionLevel=requireAdministrator para builds de distribución</li>
+          <li>Sin permisos admin: modo limitado que escanea solo el perfil del usuario actual, con advertencia clara en UI</li>
+          <li>Acceso a Windows Credential Manager (WCM) con pywin32 para listar credenciales almacenadas del sistema (también fuente de información sensible)</li>
+          <li>Acceso al registro de Windows para detectar credenciales y tokens almacenados por apps en HKCU/HKLM</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- TARGETS DE ESCANEO -->
+  <div class="section-title">Objetivos de detección — qué busca Data-Shield</div>
+  <div class="scan-targets">
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-danger)">Browser</div>
+      Cookies SQLite, session storage, saved passwords (Chrome/Edge/Firefox/Brave)
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-info)">Git / GitHub</div>
+      .git-credentials, GitHub CLI hosts.yml, .netrc, SSH keys, PATs
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-info)">VS Code</div>
+      keytar vault, globalStorage, extension tokens, settings.json secrets
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-warning)">Cloud CLIs</div>
+      AWS credentials, gcloud auth, Azure CLI tokens, kubectl config
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-warning)">Node / NPM</div>
+      .npmrc tokens, .yarnrc, package.json secrets, node_modules leaks
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-danger)">SSH / TLS</div>
+      .ssh/id_rsa, id_ed25519, PEM certs, known_hosts con keys expuestas
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-success)">Env files</div>
+      .env, .env.local, .env.production, dotenv variants, docker-compose secrets
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-info)">Docker</div>
+      ~/.docker/config.json, registry auth, docker-compose.yml, secrets/
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-danger)">API Keys</div>
+      OpenAI, Stripe, Twilio, Sendgrid, Anthropic, HuggingFace, + 50 más
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-warning)">JWTs</div>
+      Header.payload.signature en cualquier archivo de texto, logs, configs
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-secondary)">Windows</div>
+      Credential Manager, registro HKCU, LSA secrets (con permisos SYSTEM)
+    </div>
+    <div class="target-pill">
+      <div class="tp-cat" style="color:var(--color-text-info)">JetBrains</div>
+      passwords.xml, idea.key, masterPassword, HTTP client .env
+    </div>
+  </div>
+
+  <div class="risk-row">
+    <span class="risk-tag rt-critical">● CRITICAL — revocación inmediata recomendada</span>
+    <span class="risk-tag rt-high">● HIGH — cifrar en Vault hoy</span>
+    <span class="risk-tag rt-medium">● MEDIUM — revisar y asegurar</span>
+    <span class="risk-tag rt-low">● LOW — monitorear</span>
+  </div>
+
+  <div class="divider"></div>
+  <div class="footer-note">
+    Data-Shield · Arquitectura modular · Todo local, zero telemetría, zero red externa<br>
+    Haz clic en cualquier módulo para ver su detalle técnico completo
+  </div>
+</div>
