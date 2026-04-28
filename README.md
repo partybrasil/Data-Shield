@@ -23,6 +23,28 @@ Después de un día de trabajo usando múltiples herramientas (VS Code, Git, Git
 
 ---
 
+## 📸 Muestras de Interfaz
+
+### 🖥️ Interfaz Gráfica (GUI)
+Moderno diseño **Neon Dark Mode** basado en PySide6 con visualización en tiempo real y gestión intuitiva.
+
+![Data-Shield GUI Scanner](docs/images/gui_scanner.png)
+*Panel principal de escaneo con indicadores de progreso y tabla de hallazgos.*
+
+![Data-Shield GUI Vault](docs/images/gui_vault.png)
+*Gestión de la Bóveda Segura para el cifrado de credenciales críticas.*
+
+### ⌨️ Interfaz de Línea de Comandos (CLI)
+Potente CLI diseñada para automatización y uso profesional con reportes en formato Rich.
+
+![Data-Shield CLI Help](docs/images/cli_help.png)
+*Menú de ayuda de la CLI mostrando comandos disponibles.*
+
+![Data-Shield CLI Scan](docs/images/cli_scan.png)
+*Resultados de escaneo presentados en tablas formateadas con niveles de riesgo.*
+
+---
+
 ## 📋 Especificaciones Técnicas (Stack 2025)
 
 ### Core & Runtime

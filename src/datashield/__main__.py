@@ -13,14 +13,18 @@ def should_launch_gui(args):
     Returns:
         True if GUI should launch
     """
-    # Launch GUI if no arguments or --gui flag
-    if not args or "--gui" in args:
+    if not args:
         return True
-    # Launch GUI if arguments don't match CLI commands
+    if "--gui" in args:
+        return True
+    if "--help" in args or "-h" in args:
+        return False
+        
     cli_commands = ["scan", "vault", "monitor", "export", "history"]
-    if args and args[0] not in cli_commands:
-        return True
-    return False
+    if args and args[0] in cli_commands:
+        return False
+        
+    return True
 
 
 def main():
