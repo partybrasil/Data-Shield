@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=75.1.0", "wheel>=0.45.0"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "datashield"
