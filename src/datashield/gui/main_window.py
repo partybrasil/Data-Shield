@@ -9,6 +9,7 @@ from PySide6.QtGui import QIcon, QAction
 
 from .widgets import ScanPanel, ResultsTable, ProgressWidget, VaultPanel
 from .theme import ThemeManager
+from .workers import VaultWorker
 
 
 class MainWindow(QMainWindow):

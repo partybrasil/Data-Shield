@@ -25,5 +25,5 @@ DEFAULT_CONFIG = AppConfig(
     ),
     log_level="INFO",
     data_dir=Path.home() / ".datashield",
-    database_url="sqlite:///~/.datashield/datashield.db",
+    database_url=f"sqlite:///{Path.home() / '.datashield' / 'datashield.db'}",
 )

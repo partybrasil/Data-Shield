@@ -78,6 +78,14 @@ def init_db(database_url: str = "sqlite:///datashield.db") -> sessionmaker:
             poolclass=StaticPool,
         )
     else:
+        # Resolve ~ and ensure directory exists
+        if "sqlite:///" in database_url:
+            db_path = database_url.replace("sqlite:///", "")
+            from pathlib import Path
+            p = Path(db_path).expanduser().resolve()
+            p.parent.mkdir(parents=True, exist_ok=True)
+            database_url = f"sqlite:///{p}"
+            
         engine = create_engine(database_url, pool_pre_ping=True)
 
     Base.metadata.create_all(engine)
