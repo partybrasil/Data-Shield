@@ -36,7 +36,7 @@ class Exporter:
             "session_id": scan_session.id,
             "target_path": scan_session.target_path,
             "mode": scan_session.mode,
-            "start_time": scan_session.start_time.isoformat(),
+            "start_time": scan_session.start_time.isoformat() if scan_session.start_time else None,
             "end_time": scan_session.end_time.isoformat() if scan_session.end_time else None,
             "total_findings": len(findings),
             "findings": [

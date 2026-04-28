@@ -133,6 +133,7 @@ class TestExporter:
             target_path="/home/user",
             mode="safe",
             status="completed",
+            start_time=datetime.now(timezone.utc),
         )
 
         # Export
