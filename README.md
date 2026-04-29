@@ -34,11 +34,19 @@ Después de un día de trabajo usando múltiples herramientas (VS Code, Git, Git
 
 ## 📸 Muestras de Interfaz
 
-### 🖥️ Interfaz Gráfica (GUI)
-Moderno diseño **Fluent Design (Windows 11)** basado en PySide6 con efectos de mica/acrílico, navegación lateral y monitorización en tiempo real.
+### 🖥️ Interfaz Gráfica (GUI) — Windows 11 Fluent Design ✨
+**Data-Shield GUI** implementa el **Windows 11 Fluent Design System** con qfluentwidgets, ofreciendo una experiencia premium y moderna:
+
+- ✨ **Efectos Mica/Acrílico**: Transparencia moderna con bordes redondeados
+- 🎨 **Tema Neon Dark Personalizado**: Colores cian (#00f2ff), magenta, lima y naranja
+- 📊 **Monitor de Recursos en Tiempo Real**: CPU, RAM, GPU y resolución en la barra de título
+- 🧭 **Navegación Lateral Fluent**: Acceso rápido a Scanner, Vault, Monitor y Settings
+- 💾 **Persistencia de Estado**: Recuerda tamaño, posición e hilos de escaneo entre sesiones
+- ⚡ **Interfaz Responsiva**: Diseño adaptativo para 1920x1080 en adelante
+- 🔄 **Resultados en Tiempo Real**: Filtro dinámico mientras el escaneo progresa
 
 ![Data-Shield GUI Scanner](docs/images/gui_fluent_scanner.png)
-*Panel principal de escaneo con diseño Fluent y monitor de recursos en la barra de título.*
+*Panel principal de escaneo con diseño Fluent Design, tabla interactiva y monitor de recursos en barra de título.*
 
 ### ⌨️ Interfaz de Línea de Comandos (CLI)
 Potente CLI diseñada para automatización y uso profesional con reportes en formato Rich.
@@ -87,10 +95,12 @@ Compression:        Optional SQLite compression for large scan histories
 ### GUI Framework
 ```
 PySide6:            6.8.x (Qt 6.8) — Modern Windows 11 Fluent Design
-UI Library:         PySide6-Fluent-Widgets — Sidebar navigation, Mica effect, InfoBars
+qfluentwidgets:     Latest — FluentWindow, Mica effects, NavSidebar, InfoBars, CardWidgets
+Theme Engine:       Custom Neon Dark (Cyan #00f2ff, Magenta, Lime, Orange)
 Stats:              psutil + GPUtil — CPU, RAM & GPU real-time monitoring in title bar
-Persistence:        QSettings — Persistent window geometry and scan configurations
-Responsive:         Works on 1920x1080 minimum, adaptive layouts
+Persistence:        QSettings — Window geometry, positions, scan threads, exclusions
+Responsive:         Works on 1920x1080 minimum, adaptive layouts with scaling
+Animations:         Smooth transitions, splash screen with spiral animation
 ```
 
 ### CLI Framework
@@ -622,18 +632,18 @@ htmlcov/
 
 ### v0.1 (MVP — Core Prototype)
 - [x] Blueprint architecture
-- [ ] Scanner Engine (async, pause/resume)
-- [ ] Pattern Engine (6 layers)
-- [ ] App Fingerprinting (40+ apps)
-- [ ] Risk Scorer
-- [ ] Vault (AES-256)
-- [ ] CLI (Rich + Click)
-- [x] GUI (PySide6 Fluent Design)
-- [ ] Monitor Mode (Watchdog)
-- [ ] Exporters (TXT, JSON, CSV, HTML)
-- [ ] Windows integration (UAC, Credential Manager, Registry)
+- [x] Scanner Engine (async, pause/resume)
+- [x] Pattern Engine (6 layers)
+- [x] App Fingerprinting (40+ apps)
+- [x] Risk Scorer
+- [x] Vault (AES-256)
+- [x] CLI (Rich + Click)
+- [x] GUI (PySide6 Fluent Design — Windows 11 Premium)
+- [x] Monitor Mode (Watchdog)
+- [x] Exporters (TXT, JSON, CSV, HTML)
+- [x] Windows integration (UAC, Credential Manager, Registry)
 - [ ] Tests + PyInstaller build
-- [ ] Documentation
+- [x] Core Documentation
 
 ### v1.1 (Polish & Extras)
 - [ ] First-run wizard
