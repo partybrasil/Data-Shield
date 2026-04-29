@@ -73,3 +73,34 @@ class ScanSessionRepository:
                     setattr(session, key, value)
             self.session.commit()
         return session
+
+
+class VaultRepository:
+    """Repository for vault operations."""
+
+    def __init__(self, session: Session):
+        """Initialize with database session."""
+        self.session = session
+
+    def create(self, entry: VaultEntry) -> VaultEntry:
+        """Create a new vault entry."""
+        self.session.add(entry)
+        self.session.commit()
+        return entry
+
+    def get_all(self) -> List[VaultEntry]:
+        """Get all vault entries."""
+        return self.session.query(VaultEntry).order_by(VaultEntry.encrypted_at.desc()).all()
+
+    def get_by_id(self, entry_id: str) -> Optional[VaultEntry]:
+        """Get vault entry by ID."""
+        return self.session.query(VaultEntry).filter_by(id=entry_id).first()
+
+    def delete(self, entry_id: str) -> bool:
+        """Delete vault entry."""
+        entry = self.get_by_id(entry_id)
+        if entry:
+            self.session.delete(entry)
+            self.session.commit()
+            return True
+        return False

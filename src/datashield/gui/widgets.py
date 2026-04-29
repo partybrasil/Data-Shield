@@ -8,8 +8,80 @@ from qfluentwidgets import (
     PushButton, PrimaryPushButton, LineEdit, ProgressBar, 
     TableWidget, ComboBox, SpinBox, CheckBox, BodyLabel, 
     SubtitleLabel, StrongBodyLabel, IconWidget, FluentIcon as FIF,
-    PasswordLineEdit, PrimaryToolButton, TransparentToolButton
+    PasswordLineEdit, PrimaryToolButton, TransparentToolButton,
+    CardWidget, MessageBox, RoundMenu, Action
 )
+from PySide6.QtWidgets import QDialog, QFormLayout, QTextEdit, QApplication
+from PySide6.QtGui import QPainter, QPen, QFont
+import math
+
+class SplashScreen(QWidget):
+    """Animated splash screen with transparent background."""
+    def __init__(self):
+        super().__init__()
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        self.angle = 0
+        self.timer = Signal() # Placeholder for timer-less logic if needed, but QTimer is better
+        from PySide6.QtCore import QTimer
+        self.anim_timer = QTimer(self)
+        self.anim_timer.timeout.connect(self.update_animation)
+        self.anim_timer.start(16) # ~60 FPS
+        
+        self.setFixedSize(500, 500)
+        self.center_on_screen()
+        
+    def center_on_screen(self):
+        screen = QApplication.primaryScreen().availableGeometry()
+        rect = self.frameGeometry()
+        rect.moveCenter(screen.center())
+        self.move(rect.topLeft())
+
+    def update_animation(self):
+        self.angle = (self.angle + 8) % 360
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Transparent background is handled by Qt.WA_TranslucentBackground
+        
+        center = self.rect().center()
+        
+        # Draw premium spiral
+        for j in range(3): # Multiple layers for glow effect
+            for i in range(120):
+                # Fade out color
+                alpha = int((i / 120) * 255)
+                color = QColor("#00f2ff")
+                color.setAlpha(alpha)
+                
+                pen = QPen(color)
+                pen.setWidth(3 - j)
+                painter.setPen(pen)
+                
+                a = math.radians(i * 12 + self.angle + (j * 10))
+                r = (i / 120) * 180
+                
+                x = center.x() + r * math.cos(a)
+                y = center.y() + r * math.sin(a)
+                
+                if i > 0:
+                    painter.drawLine(prev_x, prev_y, x, y)
+                prev_x, prev_y = x, y
+
+        # Central Brand
+        painter.setPen(QColor("#ffffff"))
+        font = QFont("Segoe UI Semibold", 22)
+        painter.setFont(font)
+        painter.drawText(self.rect(), Qt.AlignCenter, "\n\nDATA-SHIELD")
+        
+        font.setPointSize(10)
+        painter.setFont(font)
+        painter.setPen(QColor("#00f2ff"))
+        painter.drawText(self.rect(), Qt.AlignCenter, "\n\n\n\n\n\nSECURE SYSTEM ANALYZER")
 
 class ScanPanel(QWidget):
     """Panel for configuring and starting scans."""
@@ -170,12 +242,51 @@ class SettingsPanel(QWidget):
         
         if self.old_pass.text() and self.new_pass.text():
             self.password_change_requested.emit(self.old_pass.text(), self.new_pass.text())
-        
-        QMessageBox.information(self, "Settings", "Settings saved successfully!")
 
+
+class DetailsDialog(QDialog):
+    """Dialog to show full details of a finding."""
+    def __init__(self, finding, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Finding Details")
+        self.setMinimumWidth(500)
+        
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        
+        is_dict = isinstance(finding, dict)
+        
+        # Helper to get value
+        def g(key):
+            return finding.get(key) if is_dict else getattr(finding, key, "N/A")
+
+        form.addRow("File Path:", BodyLabel(str(g("file_path"))))
+        form.addRow("Pattern:", BodyLabel(str(g("pattern_name"))))
+        form.addRow("Risk Score:", BodyLabel(f"{g('risk_score'):.2f}"))
+        form.addRow("Confidence:", BodyLabel(f"{g('confidence'):.2f}"))
+        form.addRow("Software:", BodyLabel(str(g("software"))))
+        form.addRow("Found At:", BodyLabel(str(g("found_at"))))
+        
+        match_text = g("match_text")
+        if match_text:
+            text_edit = QTextEdit()
+            text_edit.setPlainText(match_text)
+            text_edit.setReadOnly(True)
+            text_edit.setMaximumHeight(150)
+            form.addRow("Matched Text:", text_edit)
+            
+        layout.addLayout(form)
+        
+        close_btn = PrimaryPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
 
 class ResultsTable(TableWidget):
     """Table widget for displaying scan results with dynamic filtering."""
+
+    save_to_vault_requested = Signal(object)
+    open_explorer_requested = Signal(str)
+    view_details_requested = Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -186,11 +297,45 @@ class ResultsTable(TableWidget):
     def init_ui(self):
         self.setColumnCount(5)
         self.setHorizontalHeaderLabels([
-            "File Path", "Type", "Risk", "Confidence", "Detected"
+            "File Path", "Type", "Risk", "Confidence", "Software"
         ])
         self.horizontalHeader().setStretchLastSection(True)
         self.setBorderVisible(True)
         self.setBorderRadius(10)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+
+    def show_context_menu(self, pos):
+        item = self.itemAt(pos)
+        if not item:
+            return
+            
+        row = item.row()
+        finding = self.item(row, 0).data(Qt.UserRole)
+        if not finding:
+            return
+
+        menu = RoundMenu(parent=self)
+        
+        save_vault_act = Action(FIF.FINGERPRINT, "Save Copy to Vault", self)
+        save_vault_act.triggered.connect(lambda: self.save_to_vault_requested.emit(finding))
+        
+        open_explorer_act = Action(FIF.FOLDER, "Open in Explorer", self)
+        open_explorer_act.triggered.connect(lambda: self._emit_explorer(finding))
+        
+        view_details_act = Action(FIF.INFO, "View Details", self)
+        view_details_act.triggered.connect(lambda: self.view_details_requested.emit(finding))
+        
+        menu.addAction(save_vault_act)
+        menu.addAction(open_explorer_act)
+        menu.addAction(view_details_act)
+        
+        menu.exec(self.mapToGlobal(pos))
+
+    def _emit_explorer(self, finding):
+        is_dict = isinstance(finding, dict)
+        path = finding.get("file_path", "N/A") if is_dict else getattr(finding, "file_path", "N/A")
+        self.open_explorer_requested.emit(path)
 
     def add_finding(self, finding):
         # Store for filtering
@@ -221,7 +366,9 @@ class ResultsTable(TableWidget):
             except:
                 found_at = datetime.now()
 
-        self.setItem(row, 0, QTableWidgetItem(file_path))
+        path_item = QTableWidgetItem(file_path)
+        path_item.setData(Qt.UserRole, finding)
+        self.setItem(row, 0, path_item)
         self.setItem(row, 1, QTableWidgetItem(pattern_name))
         
         risk_pct = int(risk_score * 100) if risk_score <= 1.0 else int(risk_score)
@@ -236,7 +383,9 @@ class ResultsTable(TableWidget):
 
         confidence_str = f"{int(confidence * 100)}%"
         self.setItem(row, 3, QTableWidgetItem(confidence_str))
-        self.setItem(row, 4, QTableWidgetItem(found_at.strftime("%H:%M:%S")))
+        
+        software = finding.get("software", "Unknown") if is_dict else getattr(finding, "software", "Unknown")
+        self.setItem(row, 4, QTableWidgetItem(software))
         
         self.scrollToBottom()
         self.viewport().update()
@@ -282,8 +431,8 @@ class ProgressWidget(QWidget):
 
     def update_progress(self, current: int, total: int):
         if total > 0:
-            if current == 0 and total > 1:
-                # Signal for discovery phase
+            if current == 0 and total > 5:
+                # Signal for discovery phase - only for many files
                 self.progress_bar.setRange(0, 0) # Indeterminate mode
                 self.progress_label.setText("Analyzing file system...")
                 self.status_label.setText(f"Files found: {total}...")
@@ -315,40 +464,62 @@ class VaultPanel(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(25)
-        layout.setContentsMargins(50, 50, 50, 50)
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setSpacing(25)
+        self.main_layout.setContentsMargins(30, 30, 30, 30)
+
+        # Login View
+        self.login_widget = QWidget()
+        login_layout = QVBoxLayout(self.login_widget)
+        login_layout.setSpacing(20)
 
         self.icon_widget = IconWidget(FIF.FINGERPRINT)
-        self.icon_widget.setFixedSize(120, 120)
-        layout.addWidget(self.icon_widget, 0, Qt.AlignCenter)
+        self.icon_widget.setFixedSize(100, 100)
+        login_layout.addWidget(self.icon_widget, 0, Qt.AlignCenter)
 
         self.title = SubtitleLabel("Secure Vault Storage")
         self.title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.title)
+        login_layout.addWidget(self.title)
 
         self.password_input = PasswordLineEdit()
         self.password_input.setPlaceholderText("Enter Master Password")
         self.password_input.setFixedWidth(350)
-        layout.addWidget(self.password_input, 0, Qt.AlignCenter)
+        self.password_input.returnPressed.connect(self.on_unlock_clicked)
+        login_layout.addWidget(self.password_input, 0, Qt.AlignCenter)
 
         self.status_label = StrongBodyLabel("VAULT LOCKED")
         self.status_label.setTextColor(QColor("#ff3e3e"))
         self.status_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.status_label)
+        login_layout.addWidget(self.status_label)
 
         self.unlock_btn = PrimaryPushButton("Unlock Secure Vault")
         self.unlock_btn.setFixedWidth(250)
         self.unlock_btn.clicked.connect(self.on_unlock_clicked)
-        layout.addWidget(self.unlock_btn, 0, Qt.AlignCenter)
+        login_layout.addWidget(self.unlock_btn, 0, Qt.AlignCenter)
 
+        self.main_layout.addWidget(self.login_widget)
+
+        # Dashboard View (Hidden by default)
+        self.dashboard_widget = QWidget()
+        dash_layout = QVBoxLayout(self.dashboard_widget)
+        
+        dash_header = QHBoxLayout()
+        dash_header.addWidget(SubtitleLabel("Vault Dashboard"))
+        dash_header.addStretch()
+        
         self.lock_btn = PushButton(FIF.CLOSE, "Lock Vault")
-        self.lock_btn.setFixedWidth(250)
         self.lock_btn.clicked.connect(self.on_lock_clicked)
-        self.lock_btn.hide()
-        layout.addWidget(self.lock_btn, 0, Qt.AlignCenter)
+        dash_header.addWidget(self.lock_btn)
+        dash_layout.addLayout(dash_header)
 
-        layout.addStretch()
+        self.vault_table = TableWidget()
+        self.vault_table.setColumnCount(3)
+        self.vault_table.setHorizontalHeaderLabels(["Item ID", "Encrypted At", "Status"])
+        self.vault_table.horizontalHeader().setStretchLastSection(True)
+        dash_layout.addWidget(self.vault_table)
+
+        self.main_layout.addWidget(self.dashboard_widget)
+        self.dashboard_widget.hide()
 
     def on_unlock_clicked(self):
         password = self.password_input.text()
@@ -359,17 +530,21 @@ class VaultPanel(QWidget):
     def on_lock_clicked(self):
         self.lock_requested.emit()
 
-    def set_unlocked(self, unlocked: bool):
+    def set_unlocked(self, unlocked: bool, entries: list = None):
         if unlocked:
-            self.status_label.setText("VAULT UNLOCKED")
-            self.status_label.setTextColor(QColor("#00ffaa"))
-            self.icon_widget.setIcon(FIF.COMPLETED)
-            self.unlock_btn.hide()
-            self.lock_btn.show()
+            self.login_widget.hide()
+            self.dashboard_widget.show()
+            self.refresh_dashboard(entries or [])
         else:
-            self.status_label.setText("VAULT LOCKED")
-            self.status_label.setTextColor(QColor("#ff3e3e"))
-            self.icon_widget.setIcon(FIF.FINGERPRINT)
+            self.dashboard_widget.hide()
+            self.login_widget.show()
             self.password_input.clear()
-            self.lock_btn.hide()
-            self.unlock_btn.show()
+
+    def refresh_dashboard(self, entries):
+        self.vault_table.setRowCount(0)
+        for entry in entries:
+            row = self.vault_table.rowCount()
+            self.vault_table.insertRow(row)
+            self.vault_table.setItem(row, 0, QTableWidgetItem(str(entry.id)[:8] + "..."))
+            self.vault_table.setItem(row, 1, QTableWidgetItem(entry.encrypted_at.strftime("%Y-%m-%d %H:%M")))
+            self.vault_table.setItem(row, 2, QTableWidgetItem("Encrypted (AES-256-GCM)"))

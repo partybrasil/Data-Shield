@@ -33,18 +33,14 @@ def cli():
 @click.option("--max-size", type=int, default=104857600, help="Max file size (bytes)")
 @click.option("--threads", type=int, default=4, help="Number of threads")
 def scan(path: str, mode: str, max_size: int, threads: int):
-    """Scan for sensitive credentials.
-
-    Modes:
-    - ultra_fast: Filenames only, extremely fast
-    - fast: Regex + YARA (limited content)
-    - safe: All layers (1MB content, default)
-    - deep: Exhaustive analysis (Full file)
-    - interactive: Pause on findings for review
-    """
+    """Scan for sensitive credentials."""
     config = load_config()
     config.scan.mode = mode
     config.scan.max_file_size = max_size
+    
+    # Interactive mode requires single-threading for clean terminal I/O
+    if mode == "interactive":
+        threads = 1
     config.scan.thread_count = threads
 
     # Initialize database
@@ -53,15 +49,69 @@ def scan(path: str, mode: str, max_size: int, threads: int):
 
     # Create scanner
     event_bus = EventBus()
-    scanner = Scanner(config.scan, session, event_bus)
+    scanner = Scanner(config.scan, SessionLocal, event_bus)
 
-    # Simple progress callback
-    def progress_callback(current, total):
-        console.print(f"[cyan]Progress: {current}/{total}[/cyan]", end="\r")
+    # Interactive handler
+    def progress_callback(current, total, finding=None):
+        if finding:
+            if mode == "interactive":
+                console.print(f"\n[bold yellow]⚠ FINDING DETECTED[/bold yellow]")
+                console.print(f"File: [cyan]{finding['file_path']}[/cyan]")
+                console.print(f"Type: [magenta]{finding['pattern_name']}[/magenta]")
+                console.print(f"Software: [green]{finding.get('software', 'Unknown')}[/green]")
+                
+                action = click.prompt(
+                    "Action",
+                    type=click.Choice(["s", "v", "q"]),
+                    default="s",
+                    show_choices=False,
+                    prompt_suffix=" (Skip / Save to Vault / Quit scan) [s]"
+                )
+                
+                if action == "v":
+                    try:
+                        from ..vault.vault import Vault
+                        from ..storage.repository import VaultRepository
+                        from ..storage.database import VaultEntry
+                        import uuid
+                        
+                        v = Vault()
+                        if v.is_locked:
+                            pwd = click.prompt("Vault is locked. Enter Master Password", hide_input=True)
+                            if not v.unlock(pwd):
+                                console.print("[red]Invalid password. Skipping vault save.[/red]")
+                                return
+                        
+                        match_text = finding.get("match_text", "N/A")
+                        ct, iv, tag = v.encrypt(match_text)
+                        
+                        repo = VaultRepository(session)
+                        entry = VaultEntry(
+                            id=str(uuid.uuid4()),
+                            finding_id=finding["id"],
+                            encrypted_value=ct,
+                            iv=iv,
+                            tag=tag
+                        )
+                        repo.create(entry)
+                        session.commit()
+                        console.print("[green]✓ Saved to vault successfully![/green]")
+                    except Exception as e:
+                        console.print(f"[red]Error saving to vault: {e}[/red]")
+                elif action == "q":
+                    scanner.stop()
+                    console.print("[yellow]Stopping scan...[/yellow]")
+        else:
+            if current >= 0:
+                console.print(f"[cyan]Progress: {current}/{total}[/cyan]", end="\r")
 
     try:
-        with console.status("[bold green]Scanning...[/bold green]") as status:
+        if mode == "interactive":
+            console.print("[bold green]Starting Interactive Scan...[/bold green]")
             session_id = scanner.scan(path, callback=progress_callback)
+        else:
+            with console.status("[bold green]Scanning...[/bold green]") as status:
+                session_id = scanner.scan(path, callback=progress_callback)
 
         # Display results
         from ..core.findings import FindingService

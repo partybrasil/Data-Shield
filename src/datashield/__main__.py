@@ -5,18 +5,13 @@ from pathlib import Path
 
 
 def should_launch_gui(args):
-    """Determine if GUI should launch.
-
-    Args:
-        args: Command line arguments
-
-    Returns:
-        True if GUI should launch
-    """
+    """Determine if GUI should launch."""
     if not args:
         return True
     if "--gui" in args:
         return True
+    if "--cli" in args:
+        return False
     if "--help" in args or "-h" in args:
         return False
         
@@ -53,7 +48,7 @@ def main():
             exporter = Exporter()
 
             # Launch GUI
-            app = GuiApp(scanner, vault, monitor, exporter)
+            app = GuiApp(scanner, vault, monitor, exporter, SessionLocal)
             sys.exit(app.run())
         except ImportError as e:
             print(f"GUI dependencies missing or error during load: {e}")
@@ -62,6 +57,14 @@ def main():
     else:
         # Launch CLI
         from .cli import main as cli_main
+        
+        # Strip --cli from arguments
+        if "--cli" in sys.argv:
+            sys.argv.remove("--cli")
+            
+        # If no commands remain, default to interactive scan
+        if len(sys.argv) == 1:
+            sys.argv.extend(["scan", ".", "--mode", "interactive"])
 
         cli_main()
 

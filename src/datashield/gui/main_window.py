@@ -9,9 +9,25 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, Signal, QTimer, QSettings
 from PySide6.QtGui import QIcon, QAction, QColor, QPixmap, QPainter
 import psutil
+import shutil
+import sys
+from types import ModuleType
+
+# Mock distutils for GPUtil (Python 3.12+ compatibility)
+if 'distutils' not in sys.modules:
+    try:
+        import distutils
+    except ImportError:
+        distutils = ModuleType('distutils')
+        spawn = ModuleType('distutils.spawn')
+        spawn.find_executable = shutil.which
+        distutils.spawn = spawn
+        sys.modules['distutils'] = distutils
+        sys.modules['distutils.spawn'] = spawn
+
 try:
     import GPUtil
-except ImportError:
+except Exception:
     GPUtil = None
 
 from qfluentwidgets import (
@@ -29,7 +45,7 @@ from .workers import VaultWorker
 class MainWindow(FluentWindow):
     """Main application window using Fluent Design."""
 
-    def __init__(self, scanner=None, vault=None, monitor=None, exporter=None):
+    def __init__(self, scanner=None, vault=None, monitor=None, exporter=None, session_factory=None):
         # Persistence MUST be initialized before super().__init__() 
         # because the base class triggers resizeEvent during initialization.
         self.settings = QSettings("DataShield", "SecureScanner")
@@ -39,15 +55,22 @@ class MainWindow(FluentWindow):
         self.vault = vault
         self.monitor = monitor
         self.exporter = exporter
+        self.session_factory = session_factory
         self.last_session_id = None
         self.theme_manager = None
+        self._initialized = False
+        
+        # Timer for debounced persistence
+        self.save_timer = QTimer(self)
+        self.save_timer.setSingleShot(True)
+        self.save_timer.timeout.connect(self._actual_save_settings)
 
         # Basic setup
         self.setWindowTitle("Data-Shield")
         self.setWindowIcon(QIcon.fromTheme("security-high"))
         
-        # Persistence
-        self.load_settings()
+        # Persistence - Delay restoration to ensure OS window manager is ready
+        QTimer.singleShot(100, self.load_settings)
 
         # Initialize sub-panels
         self.init_panels()
@@ -68,18 +91,27 @@ class MainWindow(FluentWindow):
         
         # Apply Dark Theme
         setTheme(Theme.DARK)
+        
+        self._initialized = True
 
     def load_settings(self):
         """Restore window geometry."""
         geometry = self.settings.value("geometry")
+        
         if geometry:
             self.restoreGeometry(geometry)
         else:
             self.resize(1100, 800)
             
     def save_settings(self):
-        """Save window geometry."""
+        """Debounce save operation."""
+        if getattr(self, "_initialized", False) and self.isVisible():
+            self.save_timer.start(500) # Save 500ms after last change
+
+    def _actual_save_settings(self):
+        """Perform the actual save to disk."""
         self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.sync()
 
     def update_title_stats(self):
         """Update window title with system info and dimensions."""
@@ -101,7 +133,6 @@ class MainWindow(FluentWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.update_title_stats()
         self.save_settings()
 
     def moveEvent(self, event):
@@ -147,6 +178,10 @@ class MainWindow(FluentWindow):
         scan_layout.addWidget(self.progress_widget)
         scan_layout.addLayout(results_header_layout)
         scan_layout.addWidget(self.results_table)
+        
+        self.results_table.save_to_vault_requested.connect(self.save_copy_to_vault)
+        self.results_table.open_explorer_requested.connect(self.open_in_explorer)
+        self.results_table.view_details_requested.connect(self.view_details)
         
         self.found_types = set()
 
@@ -311,6 +346,89 @@ class MainWindow(FluentWindow):
         self.vault.lock()
         self.vault_interface.set_unlocked(False)
         InfoBar.info(title="Vault Locked", content="Secure storage is now encrypted.", parent=self)
+
+    def save_copy_to_vault(self, finding):
+        """Save a copy of the selected finding to the vault."""
+        if self.vault.is_locked:
+            InfoBar.warning(
+                title="Vault Locked",
+                content="Please unlock the vault first to save items.",
+                parent=self
+            )
+            return
+
+        try:
+            from ..storage.database import VaultEntry, get_session
+            from ..storage.repository import VaultRepository
+            import uuid
+
+            # Encrypt finding details
+            is_dict = isinstance(finding, dict)
+            match_text = finding.get("match_text", "N/A") if is_dict else getattr(finding, "match_text", "N/A")
+            if not match_text:
+                match_text = "N/A"
+            
+            ct, iv, tag = self.vault.encrypt(match_text)
+            
+            # Save to DB
+            session = self.get_db_session()
+            repo = VaultRepository(session)
+            
+            entry = VaultEntry(
+                id=str(uuid.uuid4()),
+                finding_id=finding.get("id") if is_dict else getattr(finding, "id", str(uuid.uuid4())),
+                encrypted_value=ct,
+                iv=iv,
+                tag=tag
+            )
+            repo.create(entry)
+            
+            # Refresh vault view if it's open
+            self.refresh_vault_dashboard()
+            
+            InfoBar.success(
+                title="Saved to Vault",
+                content=f"Copy of finding saved securely.",
+                parent=self
+            )
+        except Exception as e:
+            InfoBar.error(title="Vault Error", content=f"Failed to save to vault: {str(e)}", parent=self)
+
+    def open_in_explorer(self, file_path: str):
+        """Open file location in Explorer and select the file."""
+        import subprocess
+        path = os.path.abspath(file_path)
+        if os.path.exists(path):
+            subprocess.run(['explorer', '/select,', path])
+        else:
+            InfoBar.error(title="Error", content="File not found.", parent=self)
+
+    def view_details(self, finding):
+        """Show full details of a finding."""
+        from .widgets import DetailsDialog
+        dialog = DetailsDialog(finding, self)
+        dialog.exec()
+
+    def get_db_session(self):
+        """Get a database session using the provided session factory."""
+        from ..storage.database import init_db, get_session
+        if not self.session_factory:
+            db_path = self.settings.value("db_path", str(Path.home() / ".datashield" / "datashield.db"))
+            self.session_factory = init_db(f"sqlite:///{db_path}")
+        return get_session(self.session_factory)
+
+    def refresh_vault_dashboard(self):
+        """Refresh the vault dashboard with current entries."""
+        if not self.vault.is_locked:
+            from ..storage.repository import VaultRepository
+            session = self.get_db_session()
+            repo = VaultRepository(session)
+            entries = repo.get_all()
+            self.vault_interface.set_unlocked(True, entries)
+
+    def on_vault_unlocked(self):
+        self.refresh_vault_dashboard()
+        InfoBar.success(title="Vault Unlocked", content="Secure storage is now accessible.", parent=self)
 
     def set_theme_manager(self, theme_manager: ThemeManager):
         self.theme_manager = theme_manager

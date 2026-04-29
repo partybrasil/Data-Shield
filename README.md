@@ -49,6 +49,13 @@ Potente CLI diseñada para automatización y uso profesional con reportes en for
 ![Data-Shield CLI Scan](docs/images/cli_scan.png)
 *Resultados de escaneo presentados en tablas formateadas con niveles de riesgo.*
 
+### ⚡ Modo Interactivo (CLI Exclusive)
+El modo `--mode interactive` permite una revisión humana en tiempo real. Cuando el escáner detecta un secreto, la ejecución se pausa y ofrece:
+- 👁️ **Visualización**: Ver el archivo, el tipo de secreto y el software responsable.
+- 🔐 **Guardar en Bóveda**: Cifra y guarda el hallazgo inmediatamente sin terminar el escaneo.
+- ⏭️ **Omitir**: Ignorar el hallazgo y continuar.
+- 🛑 **Parada Segura**: Detener el escaneo conservando lo ya procesado.
+
 ---
 
 ## 📋 Especificaciones Técnicas (Stack 2025)

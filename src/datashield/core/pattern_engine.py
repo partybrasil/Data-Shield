@@ -135,9 +135,19 @@ class PatternEngine:
             return findings
 
         # Layer 3: Entropy analysis (Active in safe, deep)
-        threshold = 3.2 if mode == "deep" else self.entropy_threshold
+        # Skip entropy for binary/media extensions to avoid massive false positives
+        binary_extensions = {
+            ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".exe", ".dll", ".bin",
+            ".zip", ".tar", ".gz", ".7z", ".rar", ".pyc", ".pyd", ".so", ".node",
+            ".woff", ".woff2", ".ttf", ".eot", ".mp4", ".mp3", ".wav"
+        }
+        if path_obj.suffix.lower() in binary_extensions:
+            return findings
+
+        threshold = 4.5 if mode == "deep" else 5.2 # Increased from 3.5 to reduce noise
         for line in text.split("\n"):
-            if len(line) > 10:
+            line = line.strip()
+            if 15 < len(line) < 200: # Focused range for secrets
                 entropy = _shannon_entropy(line.encode())
                 if entropy > threshold:
                     findings.append(Finding(

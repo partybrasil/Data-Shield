@@ -61,18 +61,16 @@ class AppFingerprinter:
 
     # ── Public API ────────────────────────────────────────────────────────
 
-    def identify(self, file_path: str) -> tuple[Optional[AppSignature], bool, Optional[int]]:
+    def identify(self, file_path: str, quick: bool = False) -> tuple[Optional[AppSignature], bool, Optional[int]]:
         """
         Identify the app responsible for *file_path*.
 
         Args:
-            file_path: Absolute path to the file containing a credential.
+            file_path: Absolute path to the file.
+            quick: If True, skip expensive process handle scanning (significant speedup).
 
         Returns:
             Tuple of ``(signature, app_is_running, pid)``.
-            ``signature`` is None when no match is found.
-            ``app_is_running`` is True if the app's process is currently active.
-            ``pid`` is the process ID if running, else None.
         """
         path_lower = file_path.lower()
 
@@ -82,16 +80,13 @@ class AppFingerprinter:
                 expanded = _expand(pattern).lower()
                 if path_lower.startswith(expanded) or _glob_match(pattern, path_lower):
                     running, pid = self._check_running(sig)
-                    logger.debug(
-                        f"Fingerprint match: {sig.display_name} for {file_path} "
-                        f"(running={running}, pid={pid})"
-                    )
                     return sig, running, pid
 
-        # Pass 2 — process file-handle scan (admin required)
-        sig, pid = self._scan_open_handles(file_path)
-        if sig:
-            return sig, True, pid
+        # Pass 2 — process file-handle scan (admin required, skipped if quick=True)
+        if not quick:
+            sig, pid = self._scan_open_handles(file_path)
+            if sig:
+                return sig, True, pid
 
         return None, False, None
 

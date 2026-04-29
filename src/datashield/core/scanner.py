@@ -129,11 +129,18 @@ class Scanner:
                                 session_id=session_id,
                             )
                             if callback:
+                                # Identify responsible software (QUICK mode for performance)
+                                sig, _, _ = self.fingerprinter.identify(db_finding.file_path, quick=True)
+                                software_name = sig.display_name if sig else "Unknown"
+                                
                                 finding_dict = {
+                                    "id": db_finding.id,
                                     "file_path": db_finding.file_path,
                                     "pattern_name": db_finding.pattern_name,
+                                    "match_text": db_finding.match_text,
                                     "risk_score": db_finding.risk_score,
                                     "confidence": db_finding.confidence,
+                                    "software": software_name,
                                     "found_at": db_finding.found_at.isoformat()
                                 }
                                 callback(-1, -1, finding=finding_dict)
